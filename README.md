@@ -10,17 +10,17 @@ There are 4 new tool chains are introduced in branch llvm:
 * GCCLTO53:     Enabled GCC Link Time Optimization (LTO) and code size optimization (–Os) for more aggressive code size improvement.
 
 Example steps to use the CLANGLTO38 tool chain to build Qemu platform:
-  1. Download and extract the llvm 3.8.0 Pre-Built Binaries from  http://www.llvm.org/releases/ (e.g. http://www.llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz and extract it as ~/clang38).
-  2. Copy BaseTools/Bin/LLVMgold.so to above clang lib folder (e.g. ~/clang38/lib/LLVMgold.so, this step is needed only for CLANGLTO38)
-  3. Install new version linker with plugin support (e.g. ld 2.26 in GNU Binutils 2.26 or Ubuntu16.04, this step is needed only for CLANGLTO38)
-  4. $ cd edk2
-  5. $ git checkout llvm
-  6. $ export CLANG38_BIN=path/to/your/clang38/ (e.g. export CLANG38_BIN=~/clang38/bin/)
-  7. $ source edksetup.sh
-  8. $ make -C BaseTools/Source/C
-  9. $ build -a X64 -t CLANGLTO38 -p OvmfPkg/OvmfPkgX64.dsc -n 5 -b DEBUG -DDEBUG_ON_SERIAL_PORT
-  10.$ cd edk2/Build/OvmfX64/DEBUG_CLANGLTO38/FV
-  11.$ qemu-system-x86_64.exe  -bios OVMF.fd -serial file:serial.log -m 512 -hda fat:.
+  1.  Download and extract the llvm 3.8.0 Pre-Built Binaries from  http://www.llvm.org/releases/ (e.g. http://www.llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz and extract it as ~/clang38).
+  2.  Copy BaseTools/Bin/LLVMgold.so to above clang lib folder (e.g. ~/clang38/lib/LLVMgold.so, this step is needed only for CLANGLTO38)
+  3.  Install new version linker with plugin support (e.g. ld 2.26 in GNU Binutils 2.26 or Ubuntu16.04, this step is needed only for CLANGLTO38)
+  4.  $ cd edk2
+  5.  $ git checkout llvm
+  6.  $ export CLANG38_BIN=path/to/your/clang38/ (e.g. export CLANG38_BIN=~/clang38/bin/)
+  7.  $ source edksetup.sh
+  8.  $ make -C BaseTools/Source/C
+  9.  $ build -a X64 -t CLANGLTO38 -p OvmfPkg/OvmfPkgX64.dsc -n 5 -b DEBUG -DDEBUG_ON_SERIAL_PORT
+  10. $ cd edk2/Build/OvmfX64/DEBUG_CLANGLTO38/FV
+  11. $ qemu-system-x86_64.exe  -bios OVMF.fd -serial file:serial.log -m 512 -hda fat:.
 
 If you want, you can build and install GNU Binutils 2.26 as below steps in Ubuntu
   1. Download binutils-2.26 source code from http://ftp.gnu.org/gnu/binutils/ and extract it to ~/binutils-2.26

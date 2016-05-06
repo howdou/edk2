@@ -384,6 +384,12 @@ DEFINE SOURCERY_CYGWIN_TOOLS = /cygdrive/c/Program Files/CodeSourcery/Sourcery G
 #                             Required to build platforms or ACPI tables:
 #                               Intel(r) ACPI Compiler from
 #                               https://acpica.org/downloads
+#   CLANGSCAN38 -Linux-  Requires:
+#                             Clang v3.8 or later, and GNU binutils 2.26 targeting x86_64-linux-gnu
+#                        Optional:
+#                             Required to build platforms or ACPI tables:
+#                               Intel(r) ACPI Compiler from
+#                               https://acpica.org/downloads
 #   ELFGCC      -Linux-  Requires:
 #                             GCC(this tool chain uses whatever version of gcc and binutils that is installed in /usr/bin)
 #                        Optional:
@@ -7597,3 +7603,89 @@ RELEASE_CLANGLTO38_X64_CC_FLAGS       = DEF(CLANG38_X64_CC_FLAGS) -Os -flto
 *_CLANGLTO38_X64_OBJCOPY_FLAGS        = 
 *_CLANGLTO38_X64_NASM_FLAGS           = -f elf64
 
+
+####################################################################################
+#
+# ClangScan 3.8 - This configuration is used to base on CLANG38 build tool chain to 
+# run the clang static analyzer (scan-build) over edk2 codebase
+#
+####################################################################################
+DEFINE CLANGSCAN38_IA32_PREFIX          = ENV(CLANG38_BIN)
+DEFINE CLANGSCAN38_X64_PREFIX           = ENV(CLANG38_BIN)
+DEFINE GCC_DLINK2_FLAGS_COMMON          = --script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
+DEFINE CLANGSCAN38_IA32_DLINK2_FLAGS    = --defsym=PECOFF_HEADER_SIZE=0x220 DEF(GCC_DLINK2_FLAGS_COMMON)
+DEFINE CLANGSCAN38_X64_DLINK2_FLAGS     = --defsym=PECOFF_HEADER_SIZE=0x228 DEF(GCC_DLINK2_FLAGS_COMMON)
+
+*_CLANGSCAN38_*_*_FAMILY                = GCC
+*_CLANGSCAN38_*_*_BUILDRULEFAMILY       = CLANGSCAN38
+*_CLANGSCAN38_*_MAKE_PATH                    = DEF(GCC49_IA32_PREFIX)make
+*_CLANGSCAN38_*_*_DLL                        = ENV(CLANG38_DLL)
+*_CLANGSCAN38_*_ASL_PATH                     = DEF(UNIX_IASL_BIN)
+
+*_CLANGSCAN38_*_PP_FLAGS                     = DEF(GCC_PP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_*_ASLPP_FLAGS                  = DEF(GCC_ASLPP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_*_VFRPP_FLAGS                  = DEF(GCC_VFRPP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_*_APP_FLAGS                    =
+*_CLANGSCAN38_*_ASL_FLAGS                    = DEF(IASL_FLAGS)
+*_CLANGSCAN38_*_ASL_OUTFLAGS                 = DEF(IASL_OUTFLAGS)
+
+DEFINE CLANGSCAN38_ALL_CHECKER_FLAGS  = -enable-checker alpha.security.MallocOverflow -enable-checker alpha.security.ReturnPtrRange -enable-checker alpha.security.taint.TaintPropagation -disable-checker  deadcode.DeadStores -disable-checker core.NullDereference 
+DEFINE SCAN_OUTPUT_PATH = ~/ClangReport
+
+##################
+# CLANGSCAN38 IA32 definitions
+##################
+*_CLANGSCAN38_IA32_OBJCOPY_PATH         = DEF(GCC49_IA32_PREFIX)objcopy
+*_CLANGSCAN38_IA32_SCAN_PATH            = DEF(CLANG38_IA32_PREFIX)scan-build
+*_CLANGSCAN38_IA32_SCAN_DST             = DEF(SCAN_OUTPUT_PATH)
+*_CLANGSCAN38_IA32_CC_PATH              = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_SLINK_PATH           = DEF(GCC49_IA32_PREFIX)ar
+*_CLANGSCAN38_IA32_DLINK_PATH           = DEF(GCC49_IA32_PREFIX)ld
+*_CLANGSCAN38_IA32_ASLDLINK_PATH        = DEF(GCC49_IA32_PREFIX)ld
+*_CLANGSCAN38_IA32_ASM_PATH             = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_PP_PATH              = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_VFRPP_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_ASLCC_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_ASLPP_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_RC_PATH              = DEF(GCC49_IA32_PREFIX)objcopy
+
+*_CLANGSCAN38_IA32_ASLCC_FLAGS          = DEF(GCC_ASLCC_FLAGS) -m32 -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_IA32_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_i386
+*_CLANGSCAN38_IA32_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m32 -march=i386 -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_IA32_SCAN_FLAGS           = DEF(CLANGSCAN38_ALL_CHECKER_FLAGS)
+DEBUG_CLANGSCAN38_IA32_CC_FLAGS         = DEF(CLANG38_IA32_CC_FLAGS) -g -Os  
+RELEASE_CLANGSCAN38_IA32_CC_FLAGS       = DEF(CLANG38_IA32_CC_FLAGS) -Os 
+*_CLANGSCAN38_IA32_DLINK_FLAGS          = DEF(GCC49_IA32_X64_DLINK_FLAGS) -m elf_i386 --oformat=elf32-i386  
+*_CLANGSCAN38_IA32_RC_FLAGS             = DEF(GCC_IA32_RC_FLAGS)
+*_CLANGSCAN38_IA32_OBJCOPY_FLAGS        = 
+*_CLANGSCAN38_IA32_NASM_FLAGS           = -f elf32
+
+
+
+##################
+# CLANGSCAN38 X64 definitions
+##################
+*_CLANGSCAN38_X64_OBJCOPY_PATH         = DEF(GCC49_X64_PREFIX)objcopy
+*_CLANGSCAN38_X64_SCAN_PATH            = DEF(CLANG38_X64_PREFIX)scan-build
+*_CLANGSCAN38_X64_SCAN_DST             = DEF(SCAN_OUTPUT_PATH)
+*_CLANGSCAN38_X64_CC_PATH              = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_SLINK_PATH           = DEF(GCC49_X64_PREFIX)ar
+*_CLANGSCAN38_X64_DLINK_PATH           = DEF(GCC49_X64_PREFIX)ld
+*_CLANGSCAN38_X64_ASLDLINK_PATH        = DEF(GCC49_X64_PREFIX)ld
+*_CLANGSCAN38_X64_ASM_PATH             = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_PP_PATH              = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_VFRPP_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_ASLCC_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_ASLPP_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_RC_PATH              = DEF(GCC49_X64_PREFIX)objcopy
+
+*_CLANGSCAN38_X64_ASLCC_FLAGS          = -x c -Os -m64 -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_X64_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_x86_64 
+*_CLANGSCAN38_X64_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m64 -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_X64_SCAN_FLAGS           = DEF(CLANGSCAN38_ALL_CHECKER_FLAGS)
+DEBUG_CLANGSCAN38_X64_CC_FLAGS         = DEF(CLANG38_X64_CC_FLAGS) -g -Os  
+RELEASE_CLANGSCAN38_X64_CC_FLAGS       = DEF(CLANG38_X64_CC_FLAGS) -Os 
+*_CLANGSCAN38_X64_DLINK_FLAGS          = DEF(GCC49_X64_DLINK_FLAGS)  
+*_CLANGSCAN38_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
+*_CLANGSCAN38_X64_OBJCOPY_FLAGS        = 
+*_CLANGSCAN38_X64_NASM_FLAGS           = -f elf64

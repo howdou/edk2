@@ -42,3 +42,6 @@
   DebugLib
   BaseLib
 
+[BuildOptions]
+  CLANGLTO38:DEBUG_*_X64_CC_FLAGS = -fno-lto 
+  

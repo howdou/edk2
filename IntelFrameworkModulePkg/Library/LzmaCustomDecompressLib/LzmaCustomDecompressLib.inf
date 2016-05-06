@@ -60,3 +60,6 @@
   BaseMemoryLib
   ExtractGuidedSectionLib
 
+[BuildOptions]
+  CLANGLTO38:*_*_X64_CC_FLAGS = -fno-lto 
+  

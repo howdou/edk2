@@ -366,6 +366,12 @@ DEFINE SOURCERY_CYGWIN_TOOLS = /cygdrive/c/Program Files/CodeSourcery/Sourcery G
 #                             Required to build platforms or ACPI tables:
 #                               Intel(r) ACPI Compiler from
 #                               https://acpica.org/downloads
+#   GCCLTO53    -Linux-  Requires:
+#                             GCC 5.3 targeting x86_64-linux-gnu
+#                        Optional:
+#                             Required to build platforms or ACPI tables:
+#                               Intel(r) ACPI Compiler from
+#                               https://acpica.org/downloads
 #   CLANG35     -Linux,Windows-  Requires:
 #                             Clang v3.5 or later, and GNU binutils targeting aarch64-linux-gnu or arm-linux-gnueabi
 #                        Optional:
@@ -7689,3 +7695,91 @@ RELEASE_CLANGSCAN38_X64_CC_FLAGS       = DEF(CLANG38_X64_CC_FLAGS) -Os
 *_CLANGSCAN38_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
 *_CLANGSCAN38_X64_OBJCOPY_FLAGS        = 
 *_CLANGSCAN38_X64_NASM_FLAGS           = -f elf64
+
+####################################################################################
+#
+# GCCLTO 5.3 - This configuration is used to compile under Linux to produce
+# PE/COFF binaries using GCC 5.3 with link-time optimization and image size optimization.
+# Tested with GNU Binutils 2.26, e.g. ld 2.26 and gcc-ar 2.26
+#
+####################################################################################
+DEFINE GCCLTO53_IA32_PREFIX       = ENV(GCCLTO53_BIN)
+DEFINE GCCLTO53_X64_PREFIX        = ENV(GCCLTO53_BIN)
+
+*_GCCLTO53_*_*_FAMILY               = GCC
+*_GCCLTO53_*_*_BUILDRULEFAMILY      = GCCLTO53
+*_GCCLTO53_*_MAKE_PATH                    = DEF(GCCLTO53_IA32_PREFIX)make
+*_GCCLTO53_*_*_DLL                        = ENV(GCCLTO53_DLL)
+*_GCCLTO53_*_ASL_PATH                     = DEF(UNIX_IASL_BIN)
+
+*_GCCLTO53_*_PP_FLAGS                     = DEF(GCC_PP_FLAGS)
+*_GCCLTO53_*_ASLPP_FLAGS                  = DEF(GCC_ASLPP_FLAGS)
+*_GCCLTO53_*_ASLCC_FLAGS                  = DEF(GCC_ASLCC_FLAGS)
+*_GCCLTO53_*_VFRPP_FLAGS                  = DEF(GCC_VFRPP_FLAGS)
+*_GCCLTO53_*_APP_FLAGS                    =
+*_GCCLTO53_*_ASL_FLAGS                    = DEF(IASL_FLAGS)
+*_GCCLTO53_*_ASL_OUTFLAGS                 = DEF(IASL_OUTFLAGS)
+
+
+DEFINE GCCLTO53_X64_DLINK_FLAGS         = -nostdlib -Wl,-n -Wl,-q -Wl,--gc-sections -Wl,-z,common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -Wl,-u,$(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map -Wl,-melf_x86_64 -Wl,--oformat=elf64-x86-64
+DEFINE GCCLTO53_IA32_DLINK_FLAGS        = -nostdlib -Wl,-n -Wl,-q -Wl,--gc-sections -Wl,-z,common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -Wl,-u,$(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map -Wl,-melf_i386 -Wl,--oformat=elf32-i386
+
+DEFINE GCCLTO53_X64_DLINK2_FLAGS        = -Wl,--defsym=PECOFF_HEADER_SIZE=0x228 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
+DEFINE GCCLTO53_IA32_DLINK2_FLAGS        = -Wl,--defsym=PECOFF_HEADER_SIZE=0x220 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
+
+
+##################
+# GCCLTO53 IA32 definitions
+##################
+*_GCCLTO53_IA32_OBJCOPY_PATH         = DEF(GCCLTO53_IA32_PREFIX)objcopy
+*_GCCLTO53_IA32_CC_PATH              = DEF(GCCLTO53_IA32_PREFIX)gcc
+*_GCCLTO53_IA32_SLINK_PATH           = DEF(GCCLTO53_IA32_PREFIX)gcc-ar
+*_GCCLTO53_IA32_DLINK_PATH           = DEF(GCCLTO53_IA32_PREFIX)gcc
+*_GCCLTO53_IA32_ASLDLINK_PATH        = DEF(GCCLTO53_IA32_PREFIX)ld
+*_GCCLTO53_IA32_ASM_PATH             = DEF(GCCLTO53_IA32_PREFIX)gcc
+*_GCCLTO53_IA32_PP_PATH              = DEF(GCCLTO53_IA32_PREFIX)gcc
+*_GCCLTO53_IA32_VFRPP_PATH           = DEF(GCCLTO53_IA32_PREFIX)gcc
+*_GCCLTO53_IA32_ASLCC_PATH           = DEF(GCCLTO53_IA32_PREFIX)gcc
+*_GCCLTO53_IA32_ASLPP_PATH           = DEF(GCCLTO53_IA32_PREFIX)gcc
+*_GCCLTO53_IA32_RC_PATH              = DEF(GCCLTO53_IA32_PREFIX)objcopy
+
+*_GCCLTO53_IA32_ASLCC_FLAGS          = DEF(GCC49_IA32_CC_FLAGS) -x c -m32 
+*_GCCLTO53_IA32_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_i386
+*_GCCLTO53_IA32_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m32 -march=i386
+*_GCCLTO53_IA32_DLINK_FLAGS          = DEF(GCCLTO53_IA32_DLINK_FLAGS) -flto -Os 
+*_GCCLTO53_IA32_DLINK2_FLAGS         = DEF(GCCLTO53_IA32_DLINK2_FLAGS)
+*_GCCLTO53_IA32_RC_FLAGS             = DEF(GCC_IA32_RC_FLAGS)
+*_GCCLTO53_IA32_OBJCOPY_FLAGS        = 
+*_GCCLTO53_IA32_NASM_FLAGS           = -f elf32
+
+DEBUG_GCCLTO53_IA32_CC_FLAGS       = DEF(GCC49_IA32_CC_FLAGS) -g -flto -Os 
+RELEASE_GCCLTO53_IA32_CC_FLAGS       = DEF(GCC49_IA32_CC_FLAGS) -flto -Os -Wno-unused-but-set-variable
+
+##########################################################################################################################
+# GCCLTO53 X64 definitions
+# NOT recommend to use in production for now, just for your reference here.
+# The LTO X64 generated code is not stable as above IA32 so far, many generated X64 modules could meet CPU exception issues.  
+###########################################################################################################################
+*_GCCLTO53_X64_OBJCOPY_PATH         = DEF(GCCLTO53_X64_PREFIX)objcopy
+*_GCCLTO53_X64_CC_PATH              = DEF(GCCLTO53_X64_PREFIX)gcc
+*_GCCLTO53_X64_SLINK_PATH           = DEF(GCCLTO53_X64_PREFIX)gcc-ar
+*_GCCLTO53_X64_DLINK_PATH           = DEF(GCCLTO53_X64_PREFIX)gcc
+*_GCCLTO53_X64_ASLDLINK_PATH        = DEF(GCCLTO53_X64_PREFIX)ld
+*_GCCLTO53_X64_ASM_PATH             = DEF(GCCLTO53_X64_PREFIX)gcc
+*_GCCLTO53_X64_PP_PATH              = DEF(GCCLTO53_X64_PREFIX)gcc
+*_GCCLTO53_X64_VFRPP_PATH           = DEF(GCCLTO53_X64_PREFIX)gcc
+*_GCCLTO53_X64_ASLCC_PATH           = DEF(GCCLTO53_X64_PREFIX)gcc
+*_GCCLTO53_X64_ASLPP_PATH           = DEF(GCCLTO53_X64_PREFIX)gcc
+*_GCCLTO53_X64_RC_PATH              = DEF(GCCLTO53_X64_PREFIX)objcopy
+
+*_GCCLTO53_X64_ASLCC_FLAGS          = DEF(GCC49_X64_CC_FLAGS) -x c -m64 
+*_GCCLTO53_X64_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_x86_64
+*_GCCLTO53_X64_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m64
+*_GCCLTO53_X64_DLINK_FLAGS          = DEF(GCCLTO53_X64_DLINK_FLAGS) -flto -Os 
+*_GCCLTO53_X64_DLINK2_FLAGS         = DEF(GCCLTO53_X64_DLINK2_FLAGS)
+*_GCCLTO53_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
+*_GCCLTO53_X64_OBJCOPY_FLAGS        = 
+*_GCCLTO53_X64_NASM_FLAGS           = -f elf64
+
+DEBUG_GCCLTO53_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -g -flto -Os 
+RELEASE_GCCLTO53_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -flto -Os -Wno-unused-but-set-variable

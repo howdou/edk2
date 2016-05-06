@@ -136,6 +136,9 @@
 
     <Command.XCODE>
         "$(CC)" $(CC_FLAGS) -o ${dst} $(INC) ${src}
+        
+    <Command.CLANGSCAN38>
+        "$(SCAN)" $(SCAN_FLAGS) -o $(SCAN_DST) "$(CC)" $(CC_FLAGS) -o ${dst} $(INC) ${src}
 
 [C-Code-File.COMMON.IPF]
     <InputFile>

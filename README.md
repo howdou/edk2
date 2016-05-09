@@ -45,7 +45,8 @@ If you want, you can build LLVMgold.so as below steps
 
 ======================================================================================================
 There are several issues as bleow. WELCOME and APPRECIATE any suggestion to them:
-* CLANG LTO optimization can generat incorrect code. Current CLANGLTO38 LTO X64 debug build will generate wrong code for BasePrintLib.inf and LzmaCustomDecompressLib.inf modules, and the Ovmf boot will hang in these two modules. Already add work around to disable the lto optimization in these two modules' INF. Please see the log of commit 6a55aa9c3fa58f275041bf8cda138643f04baf5c
-* GCC LTO optimization can generate incorrect code. Current GCCLTO53 is even worse than CLANGLTO38, and there are more modules need to disable the LTO optimization to work around the CPU exceptions during boot time.
-* Not use gold linker, but directly use standard ld. GNU gold linker ld-new (GNU Binutils 2.26.20160125) 1.11 fails to link edk2 static library file (*.dll) with error message: "ld: internal error in do_layout, at ../../binutils-2.26/gold/object.cc:1819"
+* Not use gold linker, but directly use standard ld. GNU gold linker ld-new (GNU Binutils 2.26.20160125) 1.11 fails to link edk2 static library file (*.dll) with error message: "ld: internal error in do_layout, at ../../binutils-2.26/gold/object.cc:1819" Have submitted the gold bug in Bug 20062  - Gold2.26 fail to link Uefi firmware with internal error in do_layout, but ld works (https://sourceware.org/bugzilla/show_bug.cgi?id=20062) 
+* CLANG LTO optimization (on ld, not on gold) can generat incorrect code. Current CLANGLTO38 LTO X64 debug build will generate wrong code for BasePrintLib.inf and LzmaCustomDecompressLib.inf modules, and the Ovmf boot will hang in these two modules. Already add work around to disable the lto optimization in these two modules' INF. Please see the log of commit 6a55aa9c3fa58f275041bf8cda138643f04baf5c
+* GCC LTO optimization (on ld, not on gold) can generate incorrect code. Current GCCLTO53 is even worse than CLANGLTO38, and there are more modules need to disable the LTO optimization to work around the CPU exceptions during boot time.
+
 

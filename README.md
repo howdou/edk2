@@ -1,4 +1,17 @@
 # edk2 llvm branch
+Please see all the updated in the llvm branch from edk2 upstream by below command:
+* $ git diff master --name-only
+* BaseTools/Bin/LLVMgold-debug.tar.gz
+* BaseTools/Bin/LLVMgold.so
+* BaseTools/Conf/build_rule.template
+* BaseTools/Conf/tools_def.template
+* IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
+* MdePkg/Include/Base.h
+* MdePkg/Library/BasePrintLib/BasePrintLib.inf
+* README.md
+* ShellPkg/Library/UefiShellTftpCommandLib/Tftp.c
+
+
 This project is forked from edk2 to apply the LLVM compiler and toolchain technologies on edk2 codebase. So far, this project focus on below items:
 * Clang compiler optimization for edk2 code size improvement, e.g. Link Time Optimization (LTO) 
 * Clang Static Analyzer (scan-build) for edk2, e.g. sepcial checkers for edk2 security,  checkers for Intel Firmware Engine automation

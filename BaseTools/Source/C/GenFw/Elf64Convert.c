@@ -75,7 +75,7 @@ CleanUp64 (
   );
 
 //
-// Rename ELF32 strucutres to common names to help when porting to ELF64.
+// Rename ELF32 structures to common names to help when porting to ELF64.
 //
 typedef Elf64_Shdr Elf_Shdr;
 typedef Elf64_Ehdr Elf_Ehdr;
@@ -663,7 +663,7 @@ WriteSections64 (
         //
         //  Ignore for unkown section type.
         //
-        VerboseMsg ("%s unknown section type %x. We directly copy this section into Coff file", mInImageName, (unsigned)Shdr->sh_type);
+        VerboseMsg ("%s unknown section type %x. We directly ingore this section and NOT copy into Coff file", mInImageName, (unsigned)Shdr->sh_type);
         break;
       }
     }
@@ -798,6 +798,20 @@ WriteSections64 (
               - (SecOffset - SecShdr->sh_addr));
             VerboseMsg ("Relocation:  0x%08X", *(UINT32 *)Targ);
             break;
+          case R_X86_64_PLT32:
+            //
+            // Relative relocation: L + A - P
+            //
+            VerboseMsg ("R_X86_64_PLT32");
+            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X", 
+              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)), 
+              *(UINT32 *)Targ);
+            *(UINT32 *)Targ = (UINT32) (*(UINT32 *)Targ
+              + (mCoffSectionsOffset[Sym->st_shndx] - SymShdr->sh_addr)
+              - (SecOffset - SecShdr->sh_addr));
+            VerboseMsg ("Relocation:  0x%08X", *(UINT32 *)Targ);
+            break;
+
           default:
             Error (NULL, 0, 3000, "Invalid", "%s unsupported ELF EM_X86_64 relocation 0x%x.", mInImageName, (unsigned) ELF_R_TYPE(Rel->r_info));
           }
@@ -902,6 +916,7 @@ WriteRelocations64 (
             switch (ELF_R_TYPE(Rel->r_info)) {
             case R_X86_64_NONE:
             case R_X86_64_PC32:
+            case R_X86_64_PLT32:
               break;
             case R_X86_64_64:
               VerboseMsg ("EFI_IMAGE_REL_BASED_DIR64 Offset: 0x%08X", 

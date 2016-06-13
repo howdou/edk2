@@ -233,7 +233,7 @@ IsTextShdr (
   Elf_Shdr *Shdr
   )
 {
-  return (BOOLEAN) ((Shdr->sh_flags & (SHF_WRITE | SHF_ALLOC)) == SHF_ALLOC);
+  return (BOOLEAN) ((Shdr->sh_flags & (SHF_EXECINSTR | SHF_WRITE | SHF_ALLOC)) == (SHF_EXECINSTR | SHF_ALLOC));
 }
 
 STATIC
@@ -256,7 +256,7 @@ IsDataShdr (
   if (IsHiiRsrcShdr(Shdr)) {
     return FALSE;
   }
-  return (BOOLEAN) (Shdr->sh_flags & (SHF_WRITE | SHF_ALLOC)) == (SHF_ALLOC | SHF_WRITE);
+  return (BOOLEAN) (Shdr->sh_flags & (SHF_EXECINSTR | SHF_WRITE | SHF_ALLOC)) == (SHF_ALLOC | SHF_WRITE);
 }
 
 STATIC
@@ -661,9 +661,9 @@ WriteSections64 (
 
       default:
         //
-        //  Ignore for unkown section type.
+        //  Ignore for unknown section type.
         //
-        VerboseMsg ("%s unknown section type %x. We directly ingore this section and NOT copy into Coff file", mInImageName, (unsigned)Shdr->sh_type);
+        VerboseMsg ("%s unknown section type %x. We directly ignore this section and NOT copy into Coff file", mInImageName, (unsigned)Shdr->sh_type);
         break;
       }
     }

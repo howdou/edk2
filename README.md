@@ -1,15 +1,6 @@
 # edk2 llvm branch
 Please see all the updated in the llvm branch from edk2 upstream by below command:
 * $ git diff master --name-only
-* BaseTools/Bin/LLVMgold-debug.tar.gz
-* BaseTools/Bin/LLVMgold.so
-* BaseTools/Conf/build_rule.template
-* BaseTools/Conf/tools_def.template
-* IntelFrameworkModulePkg/Library/LzmaCustomDecompressLib/LzmaCustomDecompressLib.inf
-* MdePkg/Include/Base.h
-* MdePkg/Library/BasePrintLib/BasePrintLib.inf
-* README.md
-* ShellPkg/Library/UefiShellTftpCommandLib/Tftp.c
 
 
 This project is forked from edk2 to apply the LLVM compiler and toolchain technologies on edk2 codebase. So far, this project focus on below items:
@@ -17,10 +8,10 @@ This project is forked from edk2 to apply the LLVM compiler and toolchain techno
 * Clang Static Analyzer (scan-build) for edk2, e.g. sepcial checkers for edk2 security,  checkers for Intel Firmware Engine automation
 
 There are 4 new tool chains are introduced in branch llvm:
-* CLANG38:      Clang3.8.0 build tool chain, and enable code size optimization flag (-Os) by default on both Ia32 and X64.
-* CLANGLTO38:   Base on CLANG38 to enable LLVM Link Time Optimization (LTO) for more aggressive code size improvement. 
-* CLANGSCAN38:  Base on CLANG38 to seamlessly integrate Clang scan-build analyzer infrastructure into edk2 build infrastructure.
-* GCCLTO53:     Enabled GCC Link Time Optimization (LTO) and code size optimization (–Os) for more aggressive code size improvement.
+* CLANG38:      Clang3.8.0 build tool chain, and enable code size optimization flag (-Os) by default on both Ia32 and X64. X64 code is large code model.
+* CLANGLTO38:   Base on CLANG38 to enable LLVM Link Time Optimization (LTO) for more aggressive code size improvement. X64 code is small code model + PIE.
+* CLANGSCAN38:  Base on CLANG38 to seamlessly integrate Clang scan-build analyzer infrastructure into edk2 build infrastructure. X64 code small code model + PIE.
+* GCCLTO53:     Enabled GCC Link Time Optimization (LTO) and code size optimization (–Os) for more aggressive code size improvement. X64 code small + PIE
 
 Example steps to use the CLANGLTO38 tool chain to build Qemu platform:
   1.  Download and extract the llvm 3.8.0 Pre-Built Binaries from  http://www.llvm.org/releases/ (e.g. http://www.llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz and extract it as ~/clang38).
@@ -59,7 +50,6 @@ If you want, you can build LLVMgold.so as below steps
 ======================================================================================================
 There are several issues as bleow. WELCOME and APPRECIATE any suggestion to them:
 * Not use gold linker, but directly use standard ld. GNU gold linker ld-new (GNU Binutils 2.26.20160125) 1.11 fails to link edk2 static library file (*.dll) with error message: "ld: internal error in do_layout, at ../../binutils-2.26/gold/object.cc:1819" Have submitted the gold bug in Bug 20062  - Gold2.26 fail to link Uefi firmware with internal error in do_layout, but ld works (https://sourceware.org/bugzilla/show_bug.cgi?id=20062) 
-* CLANG LTO optimization (on ld, not on gold) can generat incorrect code. Current CLANGLTO38 LTO X64 debug build will generate wrong code for BasePrintLib.inf and LzmaCustomDecompressLib.inf modules, and the Ovmf boot will hang in these two modules. Already add work around to disable the lto optimization in these two modules' INF. Please see the log of commit 6a55aa9c3fa58f275041bf8cda138643f04baf5c. For the Clang LTO cannot work correctly on ld, I've opened a bug agaist GNU ld: Bug 20070  - LLVM gold plugin(LLVMgold.so) report Unexpected resolution failure on ld when LTO, but pass on gold (https://sourceware.org/bugzilla/show_bug.cgi?id=20070)
 * GCC LTO optimization (on ld, not on gold) can generate incorrect code. Current GCCLTO53 is even worse than CLANGLTO38, and there are more modules need to disable the LTO optimization to work around the CPU exceptions during boot time.
 
 

@@ -50,6 +50,5 @@ If you want, you can build LLVMgold.so as below steps
 ======================================================================================================
 There are several issues as bleow. WELCOME and APPRECIATE any suggestion to them:
 * Not use gold linker, but directly use standard ld. GNU gold linker ld-new (GNU Binutils 2.26.20160125) 1.11 fails to link edk2 static library file (*.dll) with error message: "ld: internal error in do_layout, at ../../binutils-2.26/gold/object.cc:1819" Have submitted the gold bug in Bug 20062  - Gold2.26 fail to link Uefi firmware with internal error in do_layout, but ld works (https://sourceware.org/bugzilla/show_bug.cgi?id=20062) 
-* GCC LTO optimization (on ld, not on gold) can generate incorrect code. Current GCCLTO53 is even worse than CLANGLTO38, and there are more modules need to disable the LTO optimization to work around the CPU exceptions during boot time.
 
 

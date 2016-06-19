@@ -4377,7 +4377,7 @@ DEFINE GCC_AARCH64_RC_FLAGS        = -I binary -O elf64-littleaarch64 -B aarch64
 
 DEFINE GCC44_ALL_CC_FLAGS            = -g -fshort-wchar -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -ffunction-sections -fdata-sections -c -include AutoGen.h -fno-common -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings
 DEFINE GCC44_IA32_CC_FLAGS           = DEF(GCC44_ALL_CC_FLAGS) -m32 -march=i586 -malign-double -fno-stack-protector -D EFI32 -fno-asynchronous-unwind-tables
-DEFINE GCC44_X64_CC_FLAGS            = DEF(GCC44_ALL_CC_FLAGS) -m64 -fno-stack-protector "-DEFIAPI=__attribute__((ms_abi))" -DNO_BUILTIN_VA_FUNCS -mno-red-zone -Wno-address -mcmodel=large -fno-asynchronous-unwind-tables
+DEFINE GCC44_X64_CC_FLAGS            = DEF(GCC44_ALL_CC_FLAGS) -m64 -fno-stack-protector "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -Wno-address -mcmodel=large -fno-asynchronous-unwind-tables
 DEFINE GCC44_IA32_X64_DLINK_COMMON   = -nostdlib -n -q --gc-sections -z common-page-size=0x20
 DEFINE GCC44_IA32_X64_ASLDLINK_FLAGS = DEF(GCC44_IA32_X64_DLINK_COMMON) --entry ReferenceAcpiTable -u ReferenceAcpiTable
 DEFINE GCC44_IA32_X64_DLINK_FLAGS    = DEF(GCC44_IA32_X64_DLINK_COMMON) --entry $(IMAGE_ENTRY_POINT) -u $(IMAGE_ENTRY_POINT) -Map $(DEST_DIR_DEBUG)/$(BASE_NAME).map
@@ -4454,7 +4454,7 @@ DEFINE GCC48_ARM_ASLDLINK_FLAGS      = DEF(GCC47_ARM_ASLDLINK_FLAGS)
 DEFINE GCC48_AARCH64_ASLDLINK_FLAGS  = DEF(GCC47_AARCH64_ASLDLINK_FLAGS)
 
 DEFINE GCC49_IA32_CC_FLAGS           = DEF(GCC48_IA32_CC_FLAGS)
-DEFINE GCC49_X64_CC_FLAGS            = DEF(GCC44_ALL_CC_FLAGS) -m64 -fno-stack-protector "-DEFIAPI=__attribute__((ms_abi))" -DNO_BUILTIN_VA_FUNCS -mno-red-zone -Wno-address -mcmodel=small -fno-asynchronous-unwind-tables -fpie 
+DEFINE GCC49_X64_CC_FLAGS            = DEF(GCC44_ALL_CC_FLAGS) -m64 -fno-stack-protector "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -Wno-address -mcmodel=small -fno-asynchronous-unwind-tables -fpie 
 DEFINE GCC49_IA32_X64_DLINK_COMMON   = -nostdlib -n -q --gc-sections -z common-page-size=0x40
 DEFINE GCC49_IA32_X64_ASLDLINK_FLAGS = DEF(GCC49_IA32_X64_DLINK_COMMON) --entry ReferenceAcpiTable -u ReferenceAcpiTable
 DEFINE GCC49_IA32_X64_DLINK_FLAGS    = DEF(GCC49_IA32_X64_DLINK_COMMON) --entry $(IMAGE_ENTRY_POINT) -u $(IMAGE_ENTRY_POINT) -Map $(DEST_DIR_DEBUG)/$(BASE_NAME).map
@@ -5142,8 +5142,8 @@ RELEASE_GCC49_IA32_CC_FLAGS       = DEF(GCC49_IA32_CC_FLAGS) -Os -Wno-unused-but
 *_GCC49_X64_OBJCOPY_FLAGS        = 
 *_GCC49_X64_NASM_FLAGS           = -f elf64
 
-  DEBUG_GCC49_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS)
-RELEASE_GCC49_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -Wno-unused-but-set-variable
+  DEBUG_GCC49_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -Os
+RELEASE_GCC49_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -Os -Wno-unused-but-set-variable
 
 ##################
 # GCC49 ARM definitions
@@ -7754,8 +7754,6 @@ RELEASE_GCCLTO53_IA32_CC_FLAGS       = DEF(GCC49_IA32_CC_FLAGS) -flto -Os -Wno-u
 
 ##########################################################################################################################
 # GCCLTO53 X64 definitions
-# NOT recommend to use in production for now, just for your reference here.
-# The LTO X64 generated code is not stable as above IA32 so far, many generated X64 modules could meet CPU exception issues.  
 ###########################################################################################################################
 *_GCCLTO53_X64_OBJCOPY_PATH         = DEF(GCCLTO53_X64_PREFIX)objcopy
 *_GCCLTO53_X64_CC_PATH              = DEF(GCCLTO53_X64_PREFIX)gcc

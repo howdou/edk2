@@ -4375,7 +4375,7 @@ DEFINE GCC_IPF_RC_FLAGS            = -I binary -O elf64-ia64-little   -B ia64   
 DEFINE GCC_ARM_RC_FLAGS            = -I binary -O elf32-littlearm     -B arm     --rename-section .data=.hii
 DEFINE GCC_AARCH64_RC_FLAGS        = -I binary -O elf64-littleaarch64 -B aarch64 --rename-section .data=.hii
 
-DEFINE GCC44_ALL_CC_FLAGS            = -g -fshort-wchar -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -ffunction-sections -fdata-sections -c -include AutoGen.h -fno-common -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings
+DEFINE GCC44_ALL_CC_FLAGS            = -fshort-wchar -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -ffunction-sections -fdata-sections -c -include AutoGen.h -fno-common -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings
 DEFINE GCC44_IA32_CC_FLAGS           = DEF(GCC44_ALL_CC_FLAGS) -m32 -march=i586 -malign-double -fno-stack-protector -D EFI32 -fno-asynchronous-unwind-tables
 DEFINE GCC44_X64_CC_FLAGS            = DEF(GCC44_ALL_CC_FLAGS) -m64 -fno-stack-protector "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -Wno-address -mcmodel=large -fno-asynchronous-unwind-tables
 DEFINE GCC44_IA32_X64_DLINK_COMMON   = -nostdlib -n -q --gc-sections -z common-page-size=0x20
@@ -4454,7 +4454,7 @@ DEFINE GCC48_ARM_ASLDLINK_FLAGS      = DEF(GCC47_ARM_ASLDLINK_FLAGS)
 DEFINE GCC48_AARCH64_ASLDLINK_FLAGS  = DEF(GCC47_AARCH64_ASLDLINK_FLAGS)
 
 DEFINE GCC49_IA32_CC_FLAGS           = DEF(GCC48_IA32_CC_FLAGS)
-DEFINE GCC49_X64_CC_FLAGS            = DEF(GCC44_ALL_CC_FLAGS) -m64 -fno-stack-protector "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -Wno-address -mcmodel=small -fno-asynchronous-unwind-tables -fpie 
+DEFINE GCC49_X64_CC_FLAGS            = DEF(GCC44_ALL_CC_FLAGS) -m64 -fno-stack-protector "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -Wno-address -mcmodel=small -fno-asynchronous-unwind-tables -fpie -fno-builtin 
 DEFINE GCC49_IA32_X64_DLINK_COMMON   = -nostdlib -n -q --gc-sections -z common-page-size=0x40
 DEFINE GCC49_IA32_X64_ASLDLINK_FLAGS = DEF(GCC49_IA32_X64_DLINK_COMMON) --entry ReferenceAcpiTable -u ReferenceAcpiTable
 DEFINE GCC49_IA32_X64_DLINK_FLAGS    = DEF(GCC49_IA32_X64_DLINK_COMMON) --entry $(IMAGE_ENTRY_POINT) -u $(IMAGE_ENTRY_POINT) -Map $(DEST_DIR_DEBUG)/$(BASE_NAME).map
@@ -5142,7 +5142,7 @@ RELEASE_GCC49_IA32_CC_FLAGS       = DEF(GCC49_IA32_CC_FLAGS) -Os -Wno-unused-but
 *_GCC49_X64_OBJCOPY_FLAGS        = 
 *_GCC49_X64_NASM_FLAGS           = -f elf64
 
-  DEBUG_GCC49_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -Os
+  DEBUG_GCC49_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -g -Os
 RELEASE_GCC49_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -Os -Wno-unused-but-set-variable
 
 ##################
@@ -7460,7 +7460,7 @@ DEFINE CLANG38_X64_PREFIX           = ENV(CLANG38_BIN)
 DEFINE CLANG38_IA32_TARGET       = -target i686-none-linux-gnu
 DEFINE CLANG38_X64_TARGET        = -target x86_64-none-linux-gnu
 
-DEFINE CLANG38_ALL_CC_FLAGS     = -c -fshort-wchar -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -Wno-empty-body -ffunction-sections -fdata-sections -include AutoGen.h -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings -fno-stack-protector -fno-builtin -mms-bitfields -Wno-address -Wno-shift-negative-value -Wno-parentheses-equality -Wno-unknown-pragmas -Wno-tautological-constant-out-of-range-compare -Wno-incompatible-library-redeclaration -target x86_64-pc-linux-gnu -fno-asynchronous-unwind-tables -mno-sse -mno-mmx -msoft-float -mno-implicit-float  -ftrap-function=undefined_behavior_has_been_optimized_away_by_clang -funsigned-char -fno-ms-extensions 
+DEFINE CLANG38_ALL_CC_FLAGS     = -c -fshort-wchar -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -Wno-empty-body -ffunction-sections -fdata-sections -include AutoGen.h -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings -fno-stack-protector -fno-builtin -mms-bitfields -Wno-address -Wno-shift-negative-value -Wno-parentheses-equality -Wno-unknown-pragmas -Wno-tautological-constant-out-of-range-compare -Wno-incompatible-library-redeclaration -target x86_64-pc-linux-gnu -fno-asynchronous-unwind-tables -mno-sse -mno-mmx -msoft-float -mno-implicit-float  -ftrap-function=undefined_behavior_has_been_optimized_away_by_clang -funsigned-char -fno-ms-extensions -fno-common 
 
 
 DEFINE CLANG38_IA32_CC_FLAGS   = DEF(CLANG38_ALL_CC_FLAGS) -m32 -D EFI32  
@@ -7718,8 +7718,7 @@ DEFINE GCCLTO53_X64_PREFIX        = ENV(GCCLTO53_BIN)
 *_GCCLTO53_*_ASL_OUTFLAGS                 = DEF(IASL_OUTFLAGS)
 
 
-DEFINE GCCLTO53_X64_DLINK_FLAGS         = -nostdlib -Wl,-n -Wl,-q -Wl,--gc-sections -Wl,-z,common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -Wl,-u,$(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map -Wl,-melf_x86_64 -Wl,--oformat=elf64-x86-64 
-DEFINE GCCLTO53_IA32_DLINK_FLAGS        = -nostdlib -Wl,-n -Wl,-q -Wl,--gc-sections -Wl,-z,common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -Wl,-u,$(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map -Wl,-melf_i386 -Wl,--oformat=elf32-i386 
+DEFINE GCCLTO53_ALL_DLINK_FLAGS         = -Os -flto -nostdlib -Wl,-n -Wl,-q -Wl,--gc-sections -Wl,-z,common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -Wl,-u,$(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map 
 
 DEFINE GCCLTO53_X64_DLINK2_FLAGS        = -Wl,--defsym=PECOFF_HEADER_SIZE=0x228 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
 DEFINE GCCLTO53_IA32_DLINK2_FLAGS        = -Wl,--defsym=PECOFF_HEADER_SIZE=0x220 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
@@ -7743,7 +7742,7 @@ DEFINE GCCLTO53_IA32_DLINK2_FLAGS        = -Wl,--defsym=PECOFF_HEADER_SIZE=0x220
 *_GCCLTO53_IA32_ASLCC_FLAGS          = DEF(GCC49_IA32_CC_FLAGS) -x c -m32 
 *_GCCLTO53_IA32_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_i386
 *_GCCLTO53_IA32_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m32 -march=i386
-*_GCCLTO53_IA32_DLINK_FLAGS          = DEF(GCCLTO53_IA32_DLINK_FLAGS) -flto -Os 
+*_GCCLTO53_IA32_DLINK_FLAGS          = DEF(GCCLTO53_ALL_DLINK_FLAGS) -Wl,-melf_i386 -Wl,--oformat=elf32-i386  
 *_GCCLTO53_IA32_DLINK2_FLAGS         = DEF(GCCLTO53_IA32_DLINK2_FLAGS)
 *_GCCLTO53_IA32_RC_FLAGS             = DEF(GCC_IA32_RC_FLAGS)
 *_GCCLTO53_IA32_OBJCOPY_FLAGS        = 
@@ -7767,14 +7766,14 @@ RELEASE_GCCLTO53_IA32_CC_FLAGS       = DEF(GCC49_IA32_CC_FLAGS) -flto -Os -Wno-u
 *_GCCLTO53_X64_ASLPP_PATH           = DEF(GCCLTO53_X64_PREFIX)gcc
 *_GCCLTO53_X64_RC_PATH              = DEF(GCCLTO53_X64_PREFIX)objcopy
 
-*_GCCLTO53_X64_ASLCC_FLAGS          = DEF(GCC49_X64_CC_FLAGS) -x c -m64 
-*_GCCLTO53_X64_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_x86_64 -pie 
+*_GCCLTO53_X64_ASLCC_FLAGS          = DEF(GCC49_X64_CC_FLAGS) -x c -m64 -Os
+*_GCCLTO53_X64_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_x86_64 -pie -Os 
 *_GCCLTO53_X64_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m64
-*_GCCLTO53_X64_DLINK_FLAGS          = DEF(GCCLTO53_X64_DLINK_FLAGS) -flto -Os -Wl,-pie -mcmodel=small
+*_GCCLTO53_X64_DLINK_FLAGS          = DEF(GCCLTO53_ALL_DLINK_FLAGS) -pie -mcmodel=small -Wl,-melf_x86_64  -Wl,--oformat=elf64-x86-64 
 *_GCCLTO53_X64_DLINK2_FLAGS         = DEF(GCCLTO53_X64_DLINK2_FLAGS)
 *_GCCLTO53_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
 *_GCCLTO53_X64_OBJCOPY_FLAGS        = 
 *_GCCLTO53_X64_NASM_FLAGS           = -f elf64
 
 DEBUG_GCCLTO53_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -g -flto -Os 
-RELEASE_GCCLTO53_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -flto -Os -Wno-unused-but-set-variable
+RELEASE_GCCLTO53_X64_CC_FLAGS       = DEF(GCC49_X64_CC_FLAGS) -flto -Os -Wno-unused-but-set-variable 

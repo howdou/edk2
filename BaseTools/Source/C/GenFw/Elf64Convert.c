@@ -812,6 +812,7 @@ WriteSections64 (
             VerboseMsg ("Relocation:  0x%08X", *(UINT32 *)Targ);
             break;
           case R_X86_64_GOTPCREL:
+          case R_X86_64_REX_GOTPCRELX:
             //
             // Relative relocation: G + GOT + A - P
             //
@@ -931,6 +932,7 @@ WriteRelocations64 (
             case R_X86_64_PLT32:
               break;
             case R_X86_64_GOTPCREL:
+            case R_X86_64_REX_GOTPCRELX:
               //
               // link script force .got and .got.* in .text section, so GoTPcRel pointer must be in .text section
               // but its value might point to .text or .data section

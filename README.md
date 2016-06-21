@@ -8,22 +8,22 @@ This project is forked from edk2 to apply the LLVM compiler and toolchain techno
 * Clang Static Analyzer (scan-build) for edk2, e.g. sepcial checkers for edk2 security,  checkers for Intel Firmware Engine automation
 
 There are 4 new tool chains are introduced in branch llvm:
-* CLANG38:      Clang3.8.0 build tool chain, and enable code size optimization flag (-Os) by default on both Ia32 and X64. X64 code is large code model.
-* CLANGLTO38:   Base on CLANG38 to enable LLVM Link Time Optimization (LTO) for more aggressive code size improvement. X64 code is small code model + PIE.
-* CLANGSCAN38:  Base on CLANG38 to seamlessly integrate Clang scan-build analyzer infrastructure into edk2 build infrastructure. X64 code small code model + PIE.
-* GCCLTO53:     Enabled GCC Link Time Optimization (LTO) and code size optimization (–Os) for more aggressive code size improvement. X64 code small + PIE
+* CLANG38:        Enable LLVM Link Time Optimization (LTO) and code size optimization flag (-Os) by default for aggressive code size improvement. CLANG38 X64 code is small code model + PIE. 
+* CLANGSCAN38:    Base on CLANG38 to seamlessly integrate Clang scan-build analyzer infrastructure into edk2 build infrastructure. X64 code small code model + PIE.
+* CLANGNOLTO38:   Base on CLANG38 to enable LLVM Link Time Optimization (LTO) for more aggressive code size improvement. X64 code is large code model.
+* GCCLTO53:       Enabled GCC Link Time Optimization (LTO) and code size optimization (–Os) for more aggressive code size improvement. X64 code small + PIE
 
-Example steps to use the CLANGLTO38 tool chain to build Qemu platform:
+Example steps to use the CLANG38 tool chain to build Qemu platform:
   1.  Download and extract the llvm 3.8.0 Pre-Built Binaries from  http://www.llvm.org/releases/ (e.g. http://www.llvm.org/releases/3.8.0/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz and extract it as ~/clang38).
-  2.  Copy BaseTools/Bin/LLVMgold.so to above clang lib folder (e.g. ~/clang38/lib/LLVMgold.so, this step is needed only for CLANGLTO38)
-  3.  Install new version linker with plugin support (e.g. ld 2.26 in GNU Binutils 2.26 or Ubuntu16.04, this step is needed only for CLANGLTO38)
+  2.  Copy BaseTools/Bin/LLVMgold.so to above clang lib folder (e.g. ~/clang38/lib/LLVMgold.so, this step is needed only for CLANG38)
+  3.  Install new version linker with plugin support (e.g. ld 2.26 in GNU Binutils 2.26 or Ubuntu16.04, this step is needed only for CLANG38)
   4.  $ cd edk2
   5.  $ git checkout llvm
   6.  $ export CLANG38_BIN=path/to/your/clang38/ (e.g. export CLANG38_BIN=~/clang38/bin/)
   7.  $ source edksetup.sh
   8.  $ make -C BaseTools/Source/C
-  9.  $ build -a X64 -t CLANGLTO38 -p OvmfPkg/OvmfPkgX64.dsc -n 5 -b DEBUG -DDEBUG_ON_SERIAL_PORT
-  10. $ cd edk2/Build/OvmfX64/DEBUG_CLANGLTO38/FV
+  9.  $ build -a X64 -t CLANG38 -p OvmfPkg/OvmfPkgX64.dsc -n 5 -b DEBUG -DDEBUG_ON_SERIAL_PORT
+  10. $ cd edk2/Build/OvmfX64/DEBUG_CLANG38/FV
   11. $ qemu-system-x86_64.exe  -bios OVMF.fd -serial file:serial.log -m 512 -hda fat:.
 
 If you want, you can build and install GNU Binutils 2.26 as below steps in Ubuntu
@@ -50,5 +50,4 @@ If you want, you can build LLVMgold.so as below steps
 ======================================================================================================
 There are several issues as bleow. WELCOME and APPRECIATE any suggestion to them:
 * Not use gold linker, but directly use standard ld. GNU gold linker ld-new (GNU Binutils 2.26.20160125) 1.11 fails to link edk2 static library file (*.dll) with error message: "ld: internal error in do_layout, at ../../binutils-2.26/gold/object.cc:1819" Have submitted the gold bug in Bug 20062  - Gold2.26 fail to link Uefi firmware with internal error in do_layout, but ld works (https://sourceware.org/bugzilla/show_bug.cgi?id=20062) 
-
-
+* Remove the -Wno-varargs to deliberately let the build fail with latest llvm 3.9 trunk (it works if build with llvm3.8). The latest llvm 3.9 trunk has more restrict on ms VA_LIST usage and will cause uncertain behavior with edk2 current VA_LIST code. Will fix current edk2 VA_LIST code after llvm 3.9 formal release.

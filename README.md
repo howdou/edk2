@@ -10,7 +10,7 @@ This project is forked from edk2 to apply the LLVM compiler and toolchain techno
 There are 4 new tool chains are introduced in branch llvm:
 * CLANG38:        Enable LLVM Link Time Optimization (LTO) and code size optimization flag (-Os) by default for aggressive code size improvement. CLANG38 X64 code is small code model + PIE. 
 * CLANGSCAN38:    Base on CLANG38 to seamlessly integrate Clang scan-build analyzer infrastructure into edk2 build infrastructure. X64 code small code model + PIE.
-* CLANGNOLTO38:   Base on CLANG38 to enable LLVM Link Time Optimization (LTO) for more aggressive code size improvement. X64 code is large code model.
+* CLANGNOLTO38:   Disable LLVM Link Time Optimization (LTO) but leave -Os enabled. X64 code is large code model which is just like GCC49.
 * GCCLTO53:       Enabled GCC Link Time Optimization (LTO) and code size optimization (–Os) for more aggressive code size improvement. X64 code small + PIE
 
 Example steps to use the CLANG38 tool chain to build Qemu platform:

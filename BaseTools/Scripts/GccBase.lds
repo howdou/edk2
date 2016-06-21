@@ -66,5 +66,6 @@ SECTIONS {
     *(.dynamic)
     *(.hash)
     *(.comment)
+    *(COMMON)
   }
 }

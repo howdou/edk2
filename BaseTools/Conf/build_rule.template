@@ -136,6 +136,9 @@
 
     <Command.XCODE>
         "$(CC)" $(CC_FLAGS) -o ${dst} $(INC) ${src}
+        
+    <Command.CLANGSCAN38>
+        "$(SCAN)" $(SCAN_FLAGS) -o $(SCAN_DST) "$(CC)" $(CC_FLAGS) -o ${dst} $(INC) ${src}
 
 [C-Code-File.COMMON.IPF]
     <InputFile>
@@ -267,6 +270,9 @@
 
     <Command.GCC>
         "$(SLINK)" -cr ${dst} $(SLINK_FLAGS) @$(OBJECT_FILES_LIST)
+        
+    <Command.CLANG38, Command.CLANGSCAN38>
+        "$(SLINK)" cr ${dst} $(SLINK_FLAGS) @$(OBJECT_FILES_LIST)
     
     <Command.RVCT>
         "$(SLINK)" $(SLINK_FLAGS) ${dst} --via $(OBJECT_FILES_LIST)
@@ -295,6 +301,10 @@
         "$(DLINK)" -o ${dst} $(DLINK_FLAGS) --start-group $(DLINK_SPATH) @$(STATIC_LIBRARY_FILES_LIST) --end-group $(DLINK2_FLAGS)
         "$(OBJCOPY)" $(OBJCOPY_FLAGS) ${dst}
 
+    <Command.GCC53, Command.CLANG38, Command.CLANGSCAN38>
+        "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -Wl,--start-group,$(DLINK_SPATH),@$(STATIC_LIBRARY_FILES_LIST) -Wl,--end-group $(DLINK2_FLAGS)
+        "$(OBJCOPY)" $(OBJCOPY_FLAGS) ${dst}
+        
     <Command.RVCT>
         "$(DLINK)" $(DLINK_FLAGS) -o ${dst} $(DLINK_SPATH) --via $(STATIC_LIBRARY_FILES_LIST) $(DLINK2_FLAGS)
 
@@ -445,6 +455,11 @@
 
     <Command.GCC>
         "$(ASLCC)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(CC_FLAGS) $(ASLCC_FLAGS) $(INC) ${src}
+        "$(ASLDLINK)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(ASLDLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
+        "$(GENFW)" -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(GENFW_FLAGS)
+        
+    <Command.GCC53>
+        "$(ASLCC)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj $(ASLCC_FLAGS) $(INC) ${src}
         "$(ASLDLINK)" -o $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(ASLDLINK_FLAGS) $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
         "$(GENFW)" -o ${dst} -c $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll $(GENFW_FLAGS)
         

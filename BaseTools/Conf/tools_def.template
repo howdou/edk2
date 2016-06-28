@@ -366,8 +366,26 @@ DEFINE SOURCERY_CYGWIN_TOOLS = /cygdrive/c/Program Files/CodeSourcery/Sourcery G
 #                             Required to build platforms or ACPI tables:
 #                               Intel(r) ACPI Compiler from
 #                               https://acpica.org/downloads
+#   GCC53    -Linux-  Requires:
+#                             GCC 5.3 targeting x86_64-linux-gnu
+#                        Optional:
+#                             Required to build platforms or ACPI tables:
+#                               Intel(r) ACPI Compiler from
+#                               https://acpica.org/downloads
 #   CLANG35     -Linux,Windows-  Requires:
 #                             Clang v3.5 or later, and GNU binutils targeting aarch64-linux-gnu or arm-linux-gnueabi
+#                        Optional:
+#                             Required to build platforms or ACPI tables:
+#                               Intel(r) ACPI Compiler from
+#                               https://acpica.org/downloads
+#   CLANG38  -Linux-  Requires:
+#                             Clang v3.8 or later, LLVMgold plugin and GNU binutils 2.26 targeting x86_64-linux-gnu
+#                        Optional:
+#                             Required to build platforms or ACPI tables:
+#                               Intel(r) ACPI Compiler from
+#                               https://acpica.org/downloads
+#   CLANGSCAN38 -Linux-  Requires:
+#                             Clang v3.8 or later, and GNU binutils 2.26 targeting x86_64-linux-gnu
 #                        Optional:
 #                             Required to build platforms or ACPI tables:
 #                               Intel(r) ACPI Compiler from
@@ -7410,3 +7428,259 @@ RELEASE_RVCTCYGWIN_ARM_CC_FLAGS  = "$(CCPATH_FLAG)" $(ARCHCC_FLAGS) $(PLATFORM_F
 # Build rule order
 #################
 *_*_*_*_BUILDRULEORDER = nasm asm Asm ASM S s
+
+
+####################################################################################
+#
+# Clang 3.8 - This configuration is used to compile under Linux to produce
+#  PE/COFF binaries using LLVM/Clang 3.8 with Link Time Optimization enabled
+#
+####################################################################################
+
+*_CLANG38_*_*_FAMILY                = GCC
+*_CLANG38_*_*_BUILDRULEFAMILY       = CLANG38
+*_CLANG38_*_MAKE_PATH               = DEF(GCC49_IA32_PREFIX)make
+*_CLANG38_*_*_DLL                   = ENV(CLANG38_DLL)
+*_CLANG38_*_ASL_PATH                = DEF(UNIX_IASL_BIN)
+
+*_CLANG38_*_PP_FLAGS                = DEF(GCC_PP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANG38_*_ASLPP_FLAGS             = DEF(GCC_ASLPP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANG38_*_VFRPP_FLAGS             = DEF(GCC_VFRPP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANG38_*_APP_FLAGS               =
+*_CLANG38_*_ASL_FLAGS               = DEF(IASL_FLAGS)
+*_CLANG38_*_ASL_OUTFLAGS            = DEF(IASL_OUTFLAGS)
+
+DEFINE CLANG38_IA32_PREFIX          = ENV(CLANG38_BIN)
+DEFINE CLANG38_X64_PREFIX           = ENV(CLANG38_BIN)
+
+DEFINE CLANG38_ALL_CC_FLAGS     = -c -fshort-wchar -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -Wno-empty-body -ffunction-sections -fdata-sections -include AutoGen.h -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings -fno-stack-protector -fno-builtin -mms-bitfields -Wno-address -Wno-shift-negative-value -Wno-parentheses-equality -Wno-unknown-pragmas -Wno-tautological-constant-out-of-range-compare -Wno-incompatible-library-redeclaration -target x86_64-pc-linux-gnu -fno-asynchronous-unwind-tables -mno-sse -mno-mmx -msoft-float -mno-implicit-float  -ftrap-function=undefined_behavior_has_been_optimized_away_by_clang -funsigned-char -fno-ms-extensions -fno-common -Wno-null-dereference -Wno-tautological-compare 
+
+DEFINE CLANG38_ALL_DLINK_FLAGS  = -flto -nostdlib -Wl,-n -Wl,-q -Wl,--gc-sections -z common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -Wl,-u,$(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map
+DEFINE CLANG38_IA32_DLINK2_FLAGS = -Wl,--defsym=PECOFF_HEADER_SIZE=0x220 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
+DEFINE CLANG38_X64_DLINK2_FLAGS  = -Wl,--defsym=PECOFF_HEADER_SIZE=0x228 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
+
+###########################
+# CLANG38 IA32 definitions
+###########################
+*_CLANG38_IA32_OBJCOPY_PATH         = DEF(GCC49_IA32_PREFIX)objcopy
+*_CLANG38_IA32_CC_PATH              = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_SLINK_PATH           = DEF(CLANG38_IA32_PREFIX)llvm-ar
+*_CLANG38_IA32_DLINK_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_ASLDLINK_PATH        = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_ASM_PATH             = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_PP_PATH              = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_VFRPP_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_ASLCC_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_ASLPP_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANG38_IA32_RC_PATH              = DEF(GCC49_IA32_PREFIX)objcopy
+
+*_CLANG38_IA32_ASLCC_FLAGS          = -x c -Os -m32 -target x86_64-pc-linux-gnu -flto 
+*_CLANG38_IA32_ASLDLINK_FLAGS       = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_i386 -Wl,--entry,ReferenceAcpiTable -Wl,-u,ReferenceAcpiTable
+*_CLANG38_IA32_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m32 -march=i386  
+DEBUG_CLANG38_IA32_CC_FLAGS         = DEF(CLANG38_ALL_CC_FLAGS) -m32 -D EFI32 -Oz -flto -march=i586 -g 
+RELEASE_CLANG38_IA32_CC_FLAGS       = DEF(CLANG38_ALL_CC_FLAGS) -m32 -D EFI32 -Oz -flto -march=i586
+*_CLANG38_IA32_DLINK_FLAGS          = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_i386 -Wl,--oformat=elf32-i386  
+*_CLANG38_IA32_DLINK2_FLAGS         = DEF(CLANG38_IA32_DLINK2_FLAGS)
+*_CLANG38_IA32_RC_FLAGS             = DEF(GCC_IA32_RC_FLAGS)
+*_CLANG38_IA32_OBJCOPY_FLAGS        = 
+*_CLANG38_IA32_NASM_FLAGS           = -f elf32
+
+
+
+##########################
+# CLANG38 X64 definitions
+##########################
+*_CLANG38_X64_OBJCOPY_PATH         = DEF(GCC49_X64_PREFIX)objcopy
+*_CLANG38_X64_CC_PATH              = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_SLINK_PATH           = DEF(CLANG38_X64_PREFIX)llvm-ar 
+*_CLANG38_X64_DLINK_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_ASLDLINK_PATH        = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_ASM_PATH             = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_PP_PATH              = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_VFRPP_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_ASLCC_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_ASLPP_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANG38_X64_RC_PATH              = DEF(GCC49_X64_PREFIX)objcopy
+
+*_CLANG38_X64_ASLCC_FLAGS          = -x c -Os -m64 -target x86_64-pc-linux-gnu -flto  
+*_CLANG38_X64_ASLDLINK_FLAGS       = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_x86_64 -Wl,--entry,ReferenceAcpiTable -Wl,-u,ReferenceAcpiTable -Wl,-pie -mcmodel=small
+*_CLANG38_X64_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m64 -target x86_64-pc-linux-gnu 
+DEBUG_CLANG38_X64_CC_FLAGS         = DEF(CLANG38_ALL_CC_FLAGS) -m64 "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -mcmodel=small -fpie -g -Oz -flto
+RELEASE_CLANG38_X64_CC_FLAGS       = DEF(CLANG38_ALL_CC_FLAGS) -m64 "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -mcmodel=small -fpie -Oz -flto 
+*_CLANG38_X64_DLINK_FLAGS          = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_x86_64 -Wl,--oformat=elf64-x86-64 -Wl,-pie -mcmodel=small
+*_CLANG38_X64_DLINK2_FLAGS         = DEF(CLANG38_X64_DLINK2_FLAGS)
+*_CLANG38_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
+*_CLANG38_X64_OBJCOPY_FLAGS        = 
+*_CLANG38_X64_NASM_FLAGS           = -f elf64
+
+
+####################################################################################
+#
+# ClangScan 3.8 - This configuration is used to base on CLANG38 build tool chain to 
+# run the clang static analyzer (scan-build) over edk2 codebase
+#
+####################################################################################
+
+*_CLANGSCAN38_*_*_FAMILY                = GCC
+*_CLANGSCAN38_*_*_BUILDRULEFAMILY       = CLANGSCAN38
+*_CLANGSCAN38_*_MAKE_PATH               = DEF(GCC49_IA32_PREFIX)make
+*_CLANGSCAN38_*_*_DLL                   = ENV(CLANG38_DLL)
+*_CLANGSCAN38_*_ASL_PATH                = DEF(UNIX_IASL_BIN)
+
+*_CLANGSCAN38_*_PP_FLAGS                = DEF(GCC_PP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_*_ASLPP_FLAGS             = DEF(GCC_ASLPP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_*_VFRPP_FLAGS             = DEF(GCC_VFRPP_FLAGS) -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_*_APP_FLAGS               =
+*_CLANGSCAN38_*_ASL_FLAGS               = DEF(IASL_FLAGS)
+*_CLANGSCAN38_*_ASL_OUTFLAGS            = DEF(IASL_OUTFLAGS)
+
+DEFINE CLANGSCAN38_ALL_CHECKER_FLAGS  = -enable-checker alpha.security.MallocOverflow -enable-checker alpha.security.ReturnPtrRange -enable-checker alpha.security.taint.TaintPropagation -disable-checker  deadcode.DeadStores -disable-checker core.NullDereference 
+DEFINE SCAN_OUTPUT_PATH = ~/ClangReport
+
+###############################
+# CLANGSCAN38 IA32 definitions
+###############################
+*_CLANGSCAN38_IA32_OBJCOPY_PATH         = DEF(GCC49_IA32_PREFIX)objcopy
+*_CLANGSCAN38_IA32_SCAN_PATH            = DEF(CLANG38_IA32_PREFIX)scan-build
+*_CLANGSCAN38_IA32_SCAN_DST             = DEF(SCAN_OUTPUT_PATH)
+*_CLANGSCAN38_IA32_CC_PATH              = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_SLINK_PATH           = DEF(CLANG38_IA32_PREFIX)llvm-ar
+*_CLANGSCAN38_IA32_DLINK_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_ASLDLINK_PATH        = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_ASM_PATH             = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_PP_PATH              = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_VFRPP_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_ASLCC_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_ASLPP_PATH           = DEF(CLANG38_IA32_PREFIX)clang
+*_CLANGSCAN38_IA32_RC_PATH              = DEF(GCC49_IA32_PREFIX)objcopy
+
+*_CLANGSCAN38_IA32_ASLCC_FLAGS          = -x c -Os -m32 -target x86_64-pc-linux-gnu -flto 
+*_CLANGSCAN38_IA32_ASLDLINK_FLAGS       = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_i386 -Wl,--entry,ReferenceAcpiTable -Wl,-u,ReferenceAcpiTable
+*_CLANGSCAN38_IA32_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m32 -march=i386  
+*_CLANGSCAN38_IA32_SCAN_FLAGS           = DEF(CLANGSCAN38_ALL_CHECKER_FLAGS)
+DEBUG_CLANGSCAN38_IA32_CC_FLAGS         = DEF(CLANG38_ALL_CC_FLAGS) -m32 -D EFI32 -Oz -flto -march=i586 -g 
+RELEASE_CLANGSCAN38_IA32_CC_FLAGS       = DEF(CLANG38_ALL_CC_FLAGS) -m32 -D EFI32 -Oz -flto -march=i586
+*_CLANGSCAN38_IA32_DLINK_FLAGS          = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_i386 -Wl,--oformat=elf32-i386  
+*_CLANGSCAN38_IA32_DLINK2_FLAGS         = DEF(CLANG38_IA32_DLINK2_FLAGS)
+*_CLANGSCAN38_IA32_RC_FLAGS             = DEF(GCC_IA32_RC_FLAGS)
+*_CLANGSCAN38_IA32_OBJCOPY_FLAGS        = 
+*_CLANGSCAN38_IA32_NASM_FLAGS           = -f elf32
+
+##############################
+# CLANGSCAN38 X64 definitions
+##############################
+
+*_CLANGSCAN38_X64_OBJCOPY_PATH         = DEF(GCC49_X64_PREFIX)objcopy
+*_CLANGSCAN38_X64_SCAN_PATH            = DEF(CLANG38_X64_PREFIX)scan-build
+*_CLANGSCAN38_X64_SCAN_DST             = DEF(SCAN_OUTPUT_PATH)
+*_CLANGSCAN38_X64_CC_PATH              = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_SLINK_PATH           = DEF(CLANG38_X64_PREFIX)llvm-ar 
+*_CLANGSCAN38_X64_DLINK_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_ASLDLINK_PATH        = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_ASM_PATH             = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_PP_PATH              = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_VFRPP_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_ASLCC_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_ASLPP_PATH           = DEF(CLANG38_X64_PREFIX)clang
+*_CLANGSCAN38_X64_RC_PATH              = DEF(GCC49_X64_PREFIX)objcopy
+
+*_CLANGSCAN38_X64_ASLCC_FLAGS          = -x c -Os -m64 -target x86_64-pc-linux-gnu -flto  
+*_CLANGSCAN38_X64_ASLDLINK_FLAGS       = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_x86_64 -Wl,--entry,ReferenceAcpiTable -Wl,-u,ReferenceAcpiTable -Wl,-pie -mcmodel=small 
+*_CLANGSCAN38_X64_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m64 -target x86_64-pc-linux-gnu 
+*_CLANGSCAN38_X64_SCAN_FLAGS       = DEF(CLANGSCAN38_ALL_CHECKER_FLAGS)
+DEBUG_CLANGSCAN38_X64_CC_FLAGS         = DEF(CLANG38_ALL_CC_FLAGS) -m64 "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -mcmodel=small -fpie -g -Oz -flto  
+RELEASE_CLANGSCAN38_X64_CC_FLAGS       = DEF(CLANG38_ALL_CC_FLAGS) -m64 "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -mcmodel=small -fpie -Oz -flto   
+*_CLANGSCAN38_X64_DLINK_FLAGS          = DEF(CLANG38_ALL_DLINK_FLAGS) -Wl,-Oz -Wl,-melf_x86_64 -Wl,--oformat=elf64-x86-64 -Wl,-pie -mcmodel=small 
+*_CLANGSCAN38_X64_DLINK2_FLAGS         = DEF(CLANG38_X64_DLINK2_FLAGS)
+*_CLANGSCAN38_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
+*_CLANGSCAN38_X64_OBJCOPY_FLAGS        = 
+*_CLANGSCAN38_X64_NASM_FLAGS           = -f elf64
+
+
+##########################################################################################
+#
+# GCC 5.3 - This configuration is used to compile under Linux to produce
+# PE/COFF binaries using GCC 5.3 with link-time optimization and image size optimization.
+# Tested with GNU Binutils 2.26, e.g. ld 2.26 and gcc-ar 2.26
+#
+##########################################################################################
+DEFINE GCC53_IA32_PREFIX          = ENV(GCC53_BIN)
+DEFINE GCC53_X64_PREFIX           = ENV(GCC53_BIN)
+
+*_GCC53_*_*_FAMILY                = GCC
+*_GCC53_*_*_BUILDRULEFAMILY       = GCC53
+*_GCC53_*_MAKE_PATH               = DEF(GCC53_IA32_PREFIX)make
+*_GCC53_*_*_DLL                   = ENV(GCC53_DLL)
+*_GCC53_*_ASL_PATH                = DEF(UNIX_IASL_BIN)
+
+*_GCC53_*_PP_FLAGS                = DEF(GCC_PP_FLAGS)
+*_GCC53_*_ASLPP_FLAGS             = DEF(GCC_ASLPP_FLAGS)
+*_GCC53_*_ASLCC_FLAGS             = DEF(GCC_ASLCC_FLAGS)
+*_GCC53_*_VFRPP_FLAGS             = DEF(GCC_VFRPP_FLAGS)
+*_GCC53_*_APP_FLAGS               =
+*_GCC53_*_ASL_FLAGS               = DEF(IASL_FLAGS)
+*_GCC53_*_ASL_OUTFLAGS            = DEF(IASL_OUTFLAGS)
+
+DEFINE GCC53_ALL_CC_FLAGS         = -fshort-wchar -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -Wno-address  -ffunction-sections -fdata-sections -fno-stack-protector -c -include AutoGen.h -fno-common -fno-builtin -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings -Wno-unused-but-set-variable
+DEFINE GCC53_IA32_CC_FLAGS        = DEF(GCC53_ALL_CC_FLAGS) -m32 -march=i586 -malign-double -D EFI32 -fno-asynchronous-unwind-tables 
+DEFINE GCC53_X64_CC_FLAGS         = DEF(GCC53_ALL_CC_FLAGS) -m64 "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -mcmodel=small -fno-asynchronous-unwind-tables -fpie 
+
+
+DEFINE GCC53_ALL_DLINK_FLAGS      = -Os -flto -nostdlib -Wl,-n -Wl,-q -Wl,--gc-sections -z common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -Wl,-u,$(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map 
+DEFINE GCC53_X64_DLINK2_FLAGS     = -Wl,--defsym=PECOFF_HEADER_SIZE=0x228 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
+DEFINE GCC53_IA32_DLINK2_FLAGS    = -Wl,--defsym=PECOFF_HEADER_SIZE=0x220 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds
+
+
+############################
+# GCC53 IA32 definitions
+############################
+*_GCC53_IA32_OBJCOPY_PATH         = DEF(GCC53_IA32_PREFIX)objcopy
+*_GCC53_IA32_CC_PATH              = DEF(GCC53_IA32_PREFIX)gcc
+*_GCC53_IA32_SLINK_PATH           = DEF(GCC53_IA32_PREFIX)gcc-ar
+*_GCC53_IA32_DLINK_PATH           = DEF(GCC53_IA32_PREFIX)gcc
+*_GCC53_IA32_ASLDLINK_PATH        = DEF(GCC53_IA32_PREFIX)ld
+*_GCC53_IA32_ASM_PATH             = DEF(GCC53_IA32_PREFIX)gcc
+*_GCC53_IA32_PP_PATH              = DEF(GCC53_IA32_PREFIX)gcc
+*_GCC53_IA32_VFRPP_PATH           = DEF(GCC53_IA32_PREFIX)gcc
+*_GCC53_IA32_ASLCC_PATH           = DEF(GCC53_IA32_PREFIX)gcc
+*_GCC53_IA32_ASLPP_PATH           = DEF(GCC53_IA32_PREFIX)gcc
+*_GCC53_IA32_RC_PATH              = DEF(GCC53_IA32_PREFIX)objcopy
+
+*_GCC53_IA32_ASLCC_FLAGS          = DEF(GCC53_IA32_CC_FLAGS) -x c -m32 
+*_GCC53_IA32_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_i386
+*_GCC53_IA32_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m32 -march=i386
+*_GCC53_IA32_DLINK_FLAGS          = DEF(GCC53_ALL_DLINK_FLAGS) -Wl,-melf_i386 -Wl,--oformat=elf32-i386
+*_GCC53_IA32_DLINK2_FLAGS         = DEF(GCC53_IA32_DLINK2_FLAGS)
+*_GCC53_IA32_RC_FLAGS             = DEF(GCC_IA32_RC_FLAGS)
+*_GCC53_IA32_OBJCOPY_FLAGS        = 
+*_GCC53_IA32_NASM_FLAGS           = -f elf32
+
+DEBUG_GCC53_IA32_CC_FLAGS         = DEF(GCC53_IA32_CC_FLAGS) -flto -Os -g
+RELEASE_GCC53_IA32_CC_FLAGS       = DEF(GCC53_IA32_CC_FLAGS) -flto -Os
+
+###########################
+# GCC53 X64 definitions
+###########################
+*_GCC53_X64_OBJCOPY_PATH         = DEF(GCC53_X64_PREFIX)objcopy
+*_GCC53_X64_CC_PATH              = DEF(GCC53_X64_PREFIX)gcc
+*_GCC53_X64_SLINK_PATH           = DEF(GCC53_X64_PREFIX)gcc-ar
+*_GCC53_X64_DLINK_PATH           = DEF(GCC53_X64_PREFIX)gcc
+*_GCC53_X64_ASLDLINK_PATH        = DEF(GCC53_X64_PREFIX)ld
+*_GCC53_X64_ASM_PATH             = DEF(GCC53_X64_PREFIX)gcc
+*_GCC53_X64_PP_PATH              = DEF(GCC53_X64_PREFIX)gcc
+*_GCC53_X64_VFRPP_PATH           = DEF(GCC53_X64_PREFIX)gcc
+*_GCC53_X64_ASLCC_PATH           = DEF(GCC53_X64_PREFIX)gcc
+*_GCC53_X64_ASLPP_PATH           = DEF(GCC53_X64_PREFIX)gcc
+*_GCC53_X64_RC_PATH              = DEF(GCC53_X64_PREFIX)objcopy
+
+*_GCC53_X64_ASLCC_FLAGS          = DEF(GCC53_X64_CC_FLAGS) -x c -m64 -Os
+*_GCC53_X64_ASLDLINK_FLAGS       = DEF(GCC49_IA32_X64_ASLDLINK_FLAGS) -m elf_x86_64 -pie -Os 
+*_GCC53_X64_ASM_FLAGS            = DEF(GCC49_ASM_FLAGS) -m64
+*_GCC53_X64_DLINK_FLAGS          = DEF(GCC53_ALL_DLINK_FLAGS) -pie -mcmodel=small -Wl,-melf_x86_64  -Wl,--oformat=elf64-x86-64
+*_GCC53_X64_DLINK2_FLAGS         = DEF(GCC53_X64_DLINK2_FLAGS)
+*_GCC53_X64_RC_FLAGS             = DEF(GCC_X64_RC_FLAGS)
+*_GCC53_X64_OBJCOPY_FLAGS        = 
+*_GCC53_X64_NASM_FLAGS           = -f elf64
+
+DEBUG_GCC53_X64_CC_FLAGS         = DEF(GCC53_X64_CC_FLAGS) -flto -Os -g
+RELEASE_GCC53_X64_CC_FLAGS       = DEF(GCC53_X64_CC_FLAGS) -flto -Os

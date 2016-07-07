@@ -755,6 +755,11 @@ WriteSections64 (
         // Determine how to handle each relocation type based on the machine type.
         //
         if (mEhdr->e_machine == EM_X86_64) {
+          //
+          // See Relocation Types details semantics in Table 4.9 of
+          // SystemV x86_64 abi Draft Version 0.99.8
+          // https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-secure.pdf
+          //
           switch (ELF_R_TYPE(Rel->r_info)) {
           case R_X86_64_NONE:
             break;
@@ -763,24 +768,24 @@ WriteSections64 (
             // Absolute relocation.
             //
             VerboseMsg ("R_X86_64_64");
-            VerboseMsg ("Offset: 0x%08X, Addend: 0x%016LX", 
-              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)), 
+            VerboseMsg ("Offset: 0x%08X, Addend: 0x%016LX",
+              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)),
               *(UINT64 *)Targ);
             *(UINT64 *)Targ = *(UINT64 *)Targ - SymShdr->sh_addr + mCoffSectionsOffset[Sym->st_shndx];
             VerboseMsg ("Relocation:  0x%016LX", *(UINT64*)Targ);
             break;
           case R_X86_64_32:
             VerboseMsg ("R_X86_64_32");
-            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X", 
-              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)), 
+            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X",
+              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)),
               *(UINT32 *)Targ);
             *(UINT32 *)Targ = (UINT32)((UINT64)(*(UINT32 *)Targ) - SymShdr->sh_addr + mCoffSectionsOffset[Sym->st_shndx]);
             VerboseMsg ("Relocation:  0x%08X", *(UINT32*)Targ);
             break;
           case R_X86_64_32S:
             VerboseMsg ("R_X86_64_32S");
-            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X", 
-              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)), 
+            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X",
+              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)),
               *(UINT32 *)Targ);
             *(INT32 *)Targ = (INT32)((INT64)(*(INT32 *)Targ) - SymShdr->sh_addr + mCoffSectionsOffset[Sym->st_shndx]);
             VerboseMsg ("Relocation:  0x%08X", *(UINT32*)Targ);
@@ -790,13 +795,44 @@ WriteSections64 (
             // Relative relocation: Symbol - Ip + Addend
             //
             VerboseMsg ("R_X86_64_PC32");
-            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X", 
-              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)), 
+            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X",
+              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)),
               *(UINT32 *)Targ);
             *(UINT32 *)Targ = (UINT32) (*(UINT32 *)Targ
               + (mCoffSectionsOffset[Sym->st_shndx] - SymShdr->sh_addr)
               - (SecOffset - SecShdr->sh_addr));
             VerboseMsg ("Relocation:  0x%08X", *(UINT32 *)Targ);
+            break;
+          case R_X86_64_PLT32:
+            //
+            // Relative relocation: L + A - P
+            //
+            VerboseMsg ("R_X86_64_PLT32");
+            VerboseMsg ("Offset: 0x%08X, Addend: 0x%08X",
+              (UINT32)(SecOffset + (Rel->r_offset - SecShdr->sh_addr)),
+              *(UINT32 *)Targ);
+            *(UINT32 *)Targ = (UINT32) (*(UINT32 *)Targ
+              + (mCoffSectionsOffset[Sym->st_shndx] - SymShdr->sh_addr)
+              - (SecOffset - SecShdr->sh_addr));
+            VerboseMsg ("Relocation:  0x%08X", *(UINT32 *)Targ);
+            break;
+          case R_X86_64_GOTPCREL:
+            //
+            // Relative relocation: G + GOT + A - P
+            //
+            VerboseMsg ("R_X86_64_GOTPCREL");
+            break;
+          case R_X86_64_GOTPCRELX:
+            //
+            // Relative relocation: G + GOT + A - P
+            //
+            VerboseMsg ("R_X86_64_GOTPCRELX");
+            break;
+          case R_X86_64_REX_GOTPCRELX:
+            //
+            // Relative relocation: G + GOT + A - P
+            //
+            VerboseMsg ("R_X86_64_REX_GOTPCRELX");
             break;
           default:
             Error (NULL, 0, 3000, "Invalid", "%s unsupported ELF EM_X86_64 relocation 0x%x.", mInImageName, (unsigned) ELF_R_TYPE(Rel->r_info));
@@ -887,6 +923,12 @@ WriteRelocations64 (
   UINT32                           Index;
   EFI_IMAGE_OPTIONAL_HEADER_UNION  *NtHdr;
   EFI_IMAGE_DATA_DIRECTORY         *Dir;
+  UINT64                           GoTPcRelPtrOffset = 0;
+  UINT64                           *RipDisplacementPtr;
+  UINT64                           *ElfFileGoTPcRelPtr;
+  UINT64                           *CoffFileGoTPcRelPtr;
+  Elf_Shdr                         *shdr;
+  UINT32                           i;
 
   for (Index = 0; Index < mEhdr->e_shnum; Index++) {
     Elf_Shdr *RelShdr = GetShdrByIndex(Index);
@@ -902,6 +944,53 @@ WriteRelocations64 (
             switch (ELF_R_TYPE(Rel->r_info)) {
             case R_X86_64_NONE:
             case R_X86_64_PC32:
+            case R_X86_64_PLT32:
+              break;
+            case R_X86_64_GOTPCREL:
+            case R_X86_64_GOTPCRELX:
+            case R_X86_64_REX_GOTPCRELX:
+              //
+              // link script force .got and .got.* in .text section, so GoTPcRel pointer must be in .text section
+              // but its value might point to .text or .data section
+              //
+              RipDisplacementPtr  = (UINT64 *)((UINT8*)mEhdr + SecShdr->sh_offset + Rel->r_offset - SecShdr->sh_addr);
+              GoTPcRelPtrOffset   = Rel->r_offset + 4 + (INT32)(*RipDisplacementPtr) - SecShdr->sh_addr;
+              ElfFileGoTPcRelPtr  = (UINT64 *)((UINT8*)mEhdr + SecShdr->sh_offset + GoTPcRelPtrOffset);
+              CoffFileGoTPcRelPtr = (UINT64 *)(mCoffFile + mCoffSectionsOffset[RelShdr->sh_info] + GoTPcRelPtrOffset);
+              //
+              // Check which section the GoTPcRel pointer point to, and calculate Elf to Coff sections displacement accordingly
+              //
+              shdr = NULL;
+              for (i = 0; i < mEhdr->e_shnum; i++) {
+                shdr = GetShdrByIndex(i);
+                if ((*ElfFileGoTPcRelPtr >= shdr->sh_addr) &&
+                    (*ElfFileGoTPcRelPtr < shdr->sh_addr + shdr->sh_size)) {
+                  break;
+                }
+              }
+              //
+              // Fix the Elf to Coff sections displacement
+              //
+              if(IsDataShdr(shdr)) {
+                *CoffFileGoTPcRelPtr = *CoffFileGoTPcRelPtr + mDataOffset - shdr->sh_addr;
+              }else if (IsTextShdr(SecShdr)){
+                *CoffFileGoTPcRelPtr = *CoffFileGoTPcRelPtr + mTextOffset - shdr->sh_addr;
+              }else {
+                //
+                // link script force to merge .rodata .rodata.*, .got and .got.* in .text section,
+                // not support GoTPcRel point to section other than .data or .text
+                //
+                Error (NULL, 0, 3000, "Invalid", "Not support relocate R_X86_64_GOTPCREL address in section other than .data or .text");
+                assert (FALSE);
+              }
+
+              VerboseMsg ("R_X86_64_GOTPCREL to EFI_IMAGE_REL_BASED_DIR64 Offset: 0x%08X",
+                mCoffSectionsOffset[RelShdr->sh_info] + GoTPcRelPtrOffset);
+              CoffAddFixup(
+                (UINT32)(UINTN)((UINT64) mCoffSectionsOffset[RelShdr->sh_info] + GoTPcRelPtrOffset),
+                EFI_IMAGE_REL_BASED_DIR64);
+              VerboseMsg ("Relocation: 0x%08X", *(UINT64*)CoffFileGoTPcRelPtr);
+
               break;
             case R_X86_64_64:
               VerboseMsg ("EFI_IMAGE_REL_BASED_DIR64 Offset: 0x%08X", 

@@ -1052,6 +1052,13 @@ typedef struct {
 #define	R_X86_64_DTPOFF32	21	/* Offset in TLS block */
 #define	R_X86_64_GOTTPOFF	22	/* PC relative offset to IE GOT entry */
 #define	R_X86_64_TPOFF32	23	/* Offset in static TLS block */
-
+/*
+ * Like R_X86_64_GOTPCREL, but used for specific instructions.
+ */
+#define R_X86_64_GOTPCRELX  41
+/*
+ * Like R_X86_64_GOTPCRELX, but used if the instruction REX prefix is present.
+ */
+#define R_X86_64_REX_GOTPCRELX  42
 
 #endif /* !_SYS_ELF_COMMON_H_ */

@@ -267,7 +267,10 @@
 
     <Command.GCC>
         "$(SLINK)" -cr ${dst} $(SLINK_FLAGS) @$(OBJECT_FILES_LIST)
-    
+
+    <Command.CLANG38>
+        "$(SLINK)" cr ${dst} $(SLINK_FLAGS) @$(OBJECT_FILES_LIST)
+
     <Command.RVCT>
         "$(SLINK)" $(SLINK_FLAGS) ${dst} --via $(OBJECT_FILES_LIST)
     
@@ -295,7 +298,7 @@
         "$(DLINK)" -o ${dst} $(DLINK_FLAGS) --start-group $(DLINK_SPATH) @$(STATIC_LIBRARY_FILES_LIST) --end-group $(DLINK2_FLAGS)
         "$(OBJCOPY)" $(OBJCOPY_FLAGS) ${dst}
 
-    <Command.GCC5>
+    <Command.GCC5, Command.CLANG38>
         "$(DLINK)" -o ${dst} $(DLINK_FLAGS) -Wl,--start-group,$(DLINK_SPATH),@$(STATIC_LIBRARY_FILES_LIST) -Wl,--end-group $(DLINK2_FLAGS)
         "$(OBJCOPY)" $(OBJCOPY_FLAGS) ${dst}
 

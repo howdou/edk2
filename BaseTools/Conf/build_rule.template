@@ -269,7 +269,7 @@
 
     <CacheOutputFile>
         $(OUTPUT_DIR)(+)${s_base}.i
-        $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
+        $(DEBUG_DIR)(+)${s_dir}(+)${s_base}.c
 
     <Command>
         "$(VFRPP)" $(VFRPP_FLAGS) $(INC) ${src} > $(OUTPUT_DIR)(+)${s_base}.i
@@ -364,6 +364,9 @@
     <OutputFile>
         $(DEBUG_DIR)(+)$(MODULE_NAME)
 
+    <CacheOutputFile>
+        ${dst}
+
     <Command.MSFT, Command.INTEL>
         "$(DLINK)" $(DLINK_FLAGS) $(DLINK_SPATH) @$(STATIC_LIBRARY_FILES_LIST)
 
@@ -392,8 +395,10 @@
         ${dst}
         $(OUTPUT_DIR)(+)${dst}
         $(BIN_DIR)(+)$(MODULE_NAME_GUID).efi
-        $(OUTPUT_DIR)(+)*.map
-        $(OUTPUT_DIR)(+)*.pdb
+
+    <CacheOutputFile.Optional>
+        $(OUTPUT_DIR)(+)$(MODULE_NAME).map
+        $(OUTPUT_DIR)(+)$(MODULE_NAME).pdb
 
     <Command.MSFT, Command.INTEL, Command.RVCT>
         "$(GENFW)" -e $(MODULE_TYPE) -o ${dst} ${src} $(GENFW_FLAGS)
@@ -653,11 +658,6 @@
         $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
         $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
 
-    <CacheOutputFile>
-        $(DEBUG_DIR)(+)AutoGen.c
-        $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
-        $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
-
     <Command>
 
 [Efi-Image.UEFI_OPTIONROM]
@@ -681,10 +681,6 @@
         $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
         $(DEBUG_DIR)(+)$(MODULE_NAME)StrDefs.h
 
-    <CacheOutputFile>
-        $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
-        $(DEBUG_DIR)(+)$(MODULE_NAME)StrDefs.h
-
     <Command>
 
 [Image-Definition-File.UEFI_HII]
@@ -692,10 +688,6 @@
         *.idf, *.Idf, *.IDF
 
     <OutputFile>
-        $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
-        $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
-
-    <CacheOutputFile>
         $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
         $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
 
@@ -715,7 +707,6 @@
 
     <CacheOutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
-        $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
         ${dst}
 
     <Command>

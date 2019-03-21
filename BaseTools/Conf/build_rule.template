@@ -128,6 +128,9 @@
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
 
+    <CacheOutputFile>
+        ${dst}
+
     <Command.MSFT, Command.INTEL>
         "$(CC)" /Fo${dst} $(CC_FLAGS) $(INC) ${src}
 
@@ -171,6 +174,11 @@
 
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
+
+    <CacheOutputFile>
+        ${d_path}(+)${s_base}.i
+        ${d_path}(+)${s_base}.iii
+        ${dst}
 
     <Command.MSFT, Command.INTEL>
         "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
@@ -223,6 +231,11 @@
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
 
+    <CacheOutputFile>
+        ${d_path}(+)${s_base}.i
+        ${d_path}(+)${s_base}.iii
+        ${dst}
+
     <Command>
         "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
         Trim --trim-long --source-code -o ${d_path}(+)${s_base}.iii ${d_path}(+)${s_base}.i
@@ -254,6 +267,10 @@
     <OutputFile>
         $(DEBUG_DIR)(+)${s_dir}(+)${s_base}.c
 
+    <CacheOutputFile>
+        $(OUTPUT_DIR)(+)${s_base}.i
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
+
     <Command>
         "$(VFRPP)" $(VFRPP_FLAGS) $(INC) ${src} > $(OUTPUT_DIR)(+)${s_base}.i
         "$(VFR)" $(VFR_FLAGS) --string-db $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk --output-directory ${d_path} $(OUTPUT_DIR)(+)${s_base}.i
@@ -265,6 +282,9 @@
 
     <OutputFile>
         $(OUTPUT_DIR)(+)$(MODULE_NAME).lib
+
+    <CacheOutputFile>
+        ${dst}
 
     <Command.MSFT, Command.INTEL>
         "$(SLINK)" $(SLINK_FLAGS) /OUT:${dst} @$(OBJECT_FILES_LIST)
@@ -292,6 +312,13 @@
 
     <OutputFile>
         $(DEBUG_DIR)(+)$(MODULE_NAME).dll
+
+    <CacheOutputFile>
+        $(DEBUG_DIR)(+)$(MODULE_NAME).dll
+        $(DEBUG_DIR)(+)$(MODULE_NAME).map
+
+    <CacheOutputFile.MSFT.Optional>
+        $(DEBUG_DIR)(+)${s_dir}(+)$(MODULE_NAME).PDB
 
     <Command.MSFT, Command.INTEL>
         "$(DLINK)" /OUT:${dst} $(DLINK_FLAGS) $(DLINK2_FLAGS) $(DLINK_SPATH) @$(STATIC_LIBRARY_FILES_LIST)
@@ -361,6 +388,13 @@
     <OutputFile>
         $(DEBUG_DIR)(+)$(MODULE_NAME).efi
 
+    <CacheOutputFile>
+        ${dst}
+        $(OUTPUT_DIR)(+)${dst}
+        $(BIN_DIR)(+)$(MODULE_NAME_GUID).efi
+        $(OUTPUT_DIR)(+)*.map
+        $(OUTPUT_DIR)(+)*.pdb
+
     <Command.MSFT, Command.INTEL, Command.RVCT>
         "$(GENFW)" -e $(MODULE_TYPE) -o ${dst} ${src} $(GENFW_FLAGS)
         $(CP) ${dst} $(OUTPUT_DIR)
@@ -414,6 +448,12 @@
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.aml
 
+    <CacheOutputFile>
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iii
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.iiii
+        ${dst}
+
     <ExtraDependency>
         $(MAKE_FILE)
 
@@ -436,6 +476,11 @@
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.acpi
 
+    <CacheOutputFile>
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll
+        ${dst}
+
     <ExtraDependency>
         $(MAKE_FILE)
 
@@ -455,6 +500,11 @@
 
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.acpi
+
+    <CacheOutputFile>
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.dll
+        ${dst}
 
     <ExtraDependency>
         $(MAKE_FILE)
@@ -485,6 +535,15 @@
 
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_base}.com
+
+    <CacheOutputFile>
+        ${d_path}(+)${s_base}.i
+        ${d_path}(+)${s_base}.iii
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.obj
+        ${dst}
+
+    <CacheOutputFile.XCODE>
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.slib
 
     <Command.MSFT, Command.INTEL>
         "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
@@ -517,6 +576,12 @@
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_base}.bin
 
+    <CacheOutputFile>
+        ${d_path}(+)${s_base}.i
+        ${d_path}(+)${s_base}.iii
+        ${dst}
+        $(OUTPUT_DIR)(+)${s_base}.com
+
     <Command>
         "$(PP)" $(PP_FLAGS) $(INC) ${src} > ${d_path}(+)${s_base}.i
         Trim --source-code --convert-hex -o ${d_path}(+)${s_base}.iii ${d_path}(+)${s_base}.i
@@ -531,6 +596,9 @@
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_base}.mcb
 
+    <CacheOutputFile>
+        ${dst}
+
     <Command>
         "$(GENFW)" -o ${dst} -m ${src} $(GENFW_FLAGS)
 
@@ -543,6 +611,10 @@
 
     <OutputFile>
         $(OUTPUT_DIR)(+)$(MODULE_NAME).bin
+
+    <CacheOutputFile>
+        ${dst}
+        $(BIN_DIR)(+)$(MODULE_NAME_GUID).bin
 
     <Command>
         "$(GENFW)" -o ${dst} -j $(MICROCODE_BINARY_FILES) $(GENFW_FLAGS)
@@ -565,6 +637,11 @@
         $(DEBUG_DIR)(+)$(MODULE_NAME)StrDefs.h
         $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
 
+    <CacheOutputFile>
+        $(DEBUG_DIR)(+)AutoGen.c
+        $(DEBUG_DIR)(+)$(MODULE_NAME)StrDefs.h
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
+
     <Command>
 
 [Image-Definition-File]
@@ -572,6 +649,11 @@
         *.idf, *.Idf, *.IDF
 
     <OutputFile>
+        $(DEBUG_DIR)(+)AutoGen.c
+        $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
+
+    <CacheOutputFile>
         $(DEBUG_DIR)(+)AutoGen.c
         $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
         $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
@@ -585,6 +667,9 @@
     <OutputFile>
         $(BIN_DIR)(+)$(MODULE_NAME_GUID).rom
 
+    <CacheOutputFile>
+        ${dst}
+
     <Command>
         $(OPTROM) -i $(PCI_DEVICE_ID) -f $(PCI_VENDOR_ID) -l $(PCI_CLASS_CODE) -r $(PCI_REVISION) -o $dst $(OPTROM_FLAGS) $src
 
@@ -596,6 +681,10 @@
         $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
         $(DEBUG_DIR)(+)$(MODULE_NAME)StrDefs.h
 
+    <CacheOutputFile>
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
+        $(DEBUG_DIR)(+)$(MODULE_NAME)StrDefs.h
+
     <Command>
 
 [Image-Definition-File.UEFI_HII]
@@ -603,6 +692,10 @@
         *.idf, *.Idf, *.IDF
 
     <OutputFile>
+        $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
+
+    <CacheOutputFile>
         $(DEBUG_DIR)(+)$(MODULE_NAME)ImgDefs.h
         $(OUTPUT_DIR)(+)$(MODULE_NAME)Idf.hpk
 
@@ -620,6 +713,11 @@
     <OutputFile>
         $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.hpk
 
+    <CacheOutputFile>
+        $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk
+        ${dst}
+
     <Command>
         "$(VFRPP)" $(VFRPP_FLAGS) $(INC) ${src} > $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
         "$(VFR)" $(VFR_FLAGS) --create-ifr-package --string-db $(OUTPUT_DIR)(+)$(MODULE_NAME)StrDefs.hpk --output-directory $(OUTPUT_DIR)(+)${s_dir} $(OUTPUT_DIR)(+)${s_dir}(+)${s_base}.i
@@ -632,6 +730,13 @@
         $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.lib
 
     <OutputFile.XCODE, OutputFile.RVCT>
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc
+
+    <CacheOutputFile.MSFT, CacheOutputFile.INTEL, CacheOutputFile.GCC>
+        $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc
+        ${dst}
+
+    <CacheOutputFile.XCODE>
         $(OUTPUT_DIR)(+)$(MODULE_NAME)hii.rc
 
     <Command.MSFT, Command.INTEL>

@@ -48,14 +48,16 @@ def ListFileMacro(FileType):
     return "%s_LIST" % FileListMacro(FileType)
 
 class TargetDescBlock(object):
-    def __init__(self, Inputs, Outputs, Commands, Dependencies):
-        self.InitWorker(Inputs, Outputs, Commands, Dependencies)
+    def __init__(self, Inputs, Outputs, Commands, Dependencies, CacheOutputFileList, CacheOptionalFileList):
+        self.InitWorker(Inputs, Outputs, Commands, Dependencies, CacheOutputFileList, CacheOptionalFileList)
 
-    def InitWorker(self, Inputs, Outputs, Commands, Dependencies):
+    def InitWorker(self, Inputs, Outputs, Commands, Dependencies, CacheOutputFileList, CacheOptionalFileList):
         self.Inputs = Inputs
         self.Outputs = Outputs
         self.Commands = Commands
         self.Dependencies = Dependencies
+        self.CacheOutputFileList = CacheOutputFileList
+        self.CacheOptionalFileList = CacheOptionalFileList
         if self.Outputs:
             self.Target = self.Outputs[0]
         else:
@@ -96,7 +98,7 @@ class FileBuildRule:
     #   @param  Output      The list representing output file(s) for a rule
     #   @param  Command     The list containing commands to generate the output from input
     #
-    def __init__(self, Type, Input, Output, Command, ExtraDependency=None):
+    def __init__(self, Type, Input, Output, Command, ExtraDependency=None, CacheOutputFile=None, CacheOptionalFile=None):
         # The Input should not be empty
         if not Input:
             Input = []
@@ -115,6 +117,14 @@ class FileBuildRule:
             self.ExtraSourceFileList = []
         else:
             self.ExtraSourceFileList = ExtraDependency
+        if not CacheOutputFile:
+            self.CacheOutputFileList = []
+        else:
+            self.CacheOutputFileList = CacheOutputFile
+        if not CacheOptionalFile:
+            self.CacheOptionalFileList = []
+        else:
+            self.CacheOptionalFileList = CacheOptionalFile
 
         #
         # Search macros used in command lines for <FILE_TYPE>_LIST and INC_LIST.
@@ -263,14 +273,18 @@ class FileBuildRule:
                         #
                         # Command line should be regenerated since some macros are different
                         #
-                        CommandList = self._BuildCommand(BuildRulePlaceholderDict)
-                        TargetDesc.InitWorker([SourceFile], DstFile, CommandList, self.ExtraSourceFileList)
+                        CommandList = self._BuildCommand(BuildRulePlaceholderDict, self.CommandList)
+                        CacheOutputFileList = self._BuildCommand(BuildRulePlaceholderDict, self.CacheOutputFileList)
+                        CacheOptionalFileList = self._BuildCommand(BuildRulePlaceholderDict, self.CacheOptionalFileList)
+                        TargetDesc.InitWorker([SourceFile], DstFile, CommandList, self.ExtraSourceFileList, CacheOutputFileList, CacheOptionalFileList)
                         break
             else:
                 TargetDesc.AddInput(SourceFile)
         else:
-            CommandList = self._BuildCommand(BuildRulePlaceholderDict)
-            TargetDesc = TargetDescBlock([SourceFile], DstFile, CommandList, self.ExtraSourceFileList)
+            CommandList = self._BuildCommand(BuildRulePlaceholderDict, self.CommandList)
+            CacheOutputFileList = self._BuildCommand(BuildRulePlaceholderDict, self.CacheOutputFileList)
+            CacheOptionalFileList = self._BuildCommand(BuildRulePlaceholderDict, self.CacheOptionalFileList)
+            TargetDesc = TargetDescBlock([SourceFile], DstFile, CommandList, self.ExtraSourceFileList, CacheOutputFileList, CacheOptionalFileList)
             TargetDesc.ListFileMacro = self.ListFileMacro
             TargetDesc.FileListMacro = self.FileListMacro
             TargetDesc.IncListFileMacro = self.IncListFileMacro
@@ -280,9 +294,9 @@ class FileBuildRule:
             self.BuildTargets[DstFile[0]] = TargetDesc
         return TargetDesc
 
-    def _BuildCommand(self, Macros):
+    def _BuildCommand(self, Macros, CommandsList):
         CommandList = []
-        for CommandString in self.CommandList:
+        for CommandString in CommandsList:
             CommandString = string.Template(CommandString).safe_substitute(Macros)
             CommandString = string.Template(CommandString).safe_substitute(Macros)
             CommandList.append(CommandString)
@@ -300,6 +314,8 @@ class BuildRule:
     _SubSection = "SUBSECTION"
     _InputFile = "INPUTFILE"
     _OutputFile = "OUTPUTFILE"
+    _CacheOutputFile = "CACHEOUTPUTFILE"
+    _CacheOptionalFile = "CACHEOPTIONALFILE"
     _ExtraDependency = "EXTRADEPENDENCY"
     _Command = "COMMAND"
     _UnknownSection = "UNKNOWNSECTION"
@@ -417,8 +433,10 @@ class BuildRule:
             Output = self._RuleInfo[Family, self._OutputFile]
             Command = self._RuleInfo[Family, self._Command]
             ExtraDependency = self._RuleInfo[Family, self._ExtraDependency]
+            CacheOutputFile = self._RuleInfo[Family, self._CacheOutputFile]
+            CacheOptionalFile = self._RuleInfo[Family, self._CacheOptionalFile]
 
-            BuildRule = FileBuildRule(self._FileType, Input, Output, Command, ExtraDependency)
+            BuildRule = FileBuildRule(self._FileType, Input, Output, Command, ExtraDependency, CacheOutputFile, CacheOptionalFile)
             for BuildType in self._BuildTypeList:
                 for Arch in self._ArchList:
                     Database[self._FileType, BuildType, Arch, Family] = BuildRule
@@ -434,6 +452,7 @@ class BuildRule:
         self._BuildTypeList = set()
         self._ArchList = set()
         self._FamilyList = []
+        self._Optional = ""
         self._TotalToolChainFamilySet = set()
         FileType = ''
         RuleNameList = self.RuleContent[LineIndex][1:-1].split(',')
@@ -515,9 +534,14 @@ class BuildRule:
             if Family not in FamilyList:
                 FamilyList.append(Family)
 
+            if TokenList[-1] == 'Optional':
+                self._Optional = TokenList[-1].strip().upper()
+
         self._FamilyList = FamilyList
         self._TotalToolChainFamilySet.update(FamilyList)
         self._State = SectionType.upper()
+        if self._Optional and self._State == self._CacheOutputFile:
+            self._State = self._CacheOptionalFile
         if TAB_COMMON in FamilyList and len(FamilyList) > 1:
             EdkLogger.error("build", FORMAT_INVALID,
                             "Specific tool chain family should not be mixed with general one",
@@ -548,6 +572,22 @@ class BuildRule:
             if self._RuleInfo[ToolChainFamily, self._State] is None:
                 self._RuleInfo[ToolChainFamily, self._State] = []
             self._RuleInfo[ToolChainFamily, self._State].append(self.RuleContent[LineIndex])
+
+    ## Parse <CacheOutputFile> sub-section
+    ## Parse <CacheOutputFile.optional> sub-section
+    #
+    #   @param  LineIndex   The line index of build rule text
+    #
+    def ParseCacheSubSection(self, LineIndex):
+        for ToolChainFamily in self._FamilyList:
+            if not self._Optional:
+                if self._RuleInfo[ToolChainFamily, self._State] is None:
+                    self._RuleInfo[ToolChainFamily, self._State] = []
+                self._RuleInfo[ToolChainFamily, self._State].append(self.RuleContent[LineIndex])
+            else:
+                if self._RuleInfo[ToolChainFamily, self._CacheOptionalFile] is None:
+                    self._RuleInfo[ToolChainFamily, self._CacheOptionalFile] = []
+                self._RuleInfo[ToolChainFamily, self._CacheOptionalFile].append(self.RuleContent[LineIndex])
 
     ## Get a build rule via [] operator
     #
@@ -584,6 +624,8 @@ class BuildRule:
         _SubSection        : ParseSubSection,
         _InputFile         : ParseInputFileSubSection,
         _OutputFile        : ParseCommonSubSection,
+        _CacheOutputFile   : ParseCacheSubSection,
+        _CacheOptionalFile : ParseCacheSubSection,
         _ExtraDependency   : ParseCommonSubSection,
         _Command           : ParseCommonSubSection,
         _UnknownSection    : SkipSection,

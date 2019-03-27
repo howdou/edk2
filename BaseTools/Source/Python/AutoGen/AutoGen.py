@@ -62,7 +62,7 @@ gDepexTokenPattern = re.compile("(\(|\)|\w+| \S+\.inf)")
 
 ## Regular expression for match: PCD(xxxx.yyy)
 gPCDAsGuidPattern = re.compile(r"^PCD\(.+\..+\)$")
-
+gTargetPattern = re.compile(r"\$\(.*?\)")
 #
 # Regular expression for finding Include Directories, the difference between MSFT and INTEL/GCC/RVCT
 # is the former use /I , the Latter used -I to specify include directories
@@ -3982,6 +3982,34 @@ class ModuleAutoGen(AutoGen):
                 for f in FileSet:
                     print(f, file=file)
 
+        def CreateCacheOutput():
+            CacheOutputFileList = ["<CacheOutputFile>"]
+            CacheOptionalFileList = ["<CacheOutputFile.Optional>"]
+            for Type in self.Targets:
+                CmdTargets = self.Targets[Type]
+                for Target in CmdTargets:
+                    CacheOutputFileList.extend(Target.CacheOutputFileList)
+                    CacheOptionalFileList.extend(Target.CacheOptionalFileList)
+            CacheOutputFileList.extend(CacheOptionalFileList)
+            for Target in CacheOutputFileList:
+                MacroList = gTargetPattern.findall(Target)
+                TargetCopy = Target
+                for Macro in MacroList:
+                    if self.Macros.get(Macro[2:-1]):
+                        TargetCopy = TargetCopy.replace(Macro, self.Macros[Macro[2:-1]])
+                if MacroList:
+                    Index = CacheOutputFileList.index(Target)
+                    CacheOutputFileList[Index] = TargetCopy
+            if CacheOutputFileList[1] == "<CacheOutputFile.Optional>":
+                CacheOutputFileList.pop(0)
+            if CacheOutputFileList[-1] in ["<CacheOutputFile.Optional>","<CacheOutputFile>"]:
+                CacheOutputFileList.pop(-1)
+            CacheFileLines = '\n'.join(CacheOutputFileList)
+            if os.path.exists(self.CacheOutputPath):
+                os.remove(self.CacheOutputPath)
+            with open(self.CacheOutputPath, 'w+') as file:
+                file.write(CacheFileLines)
+
         # Ignore generating makefile when it is a binary module
         if self.IsBinaryModule:
             return
@@ -4006,6 +4034,7 @@ class ModuleAutoGen(AutoGen):
                             (self.Name, self.Arch))
 
         CreateTimeStamp()
+        CreateCacheOutput()
 
     def CopyBinaryFiles(self):
         for File in self.Module.Binaries:
@@ -4171,3 +4200,7 @@ class ModuleAutoGen(AutoGen):
     @cached_property
     def TimeStampPath(self):
         return os.path.join(self.MakeFileDir, 'AutoGenTimeStamp')
+
+    @cached_property
+    def CacheOutputPath(self):
+        return os.path.join(self.MakeFileDir, 'CacheOutput')

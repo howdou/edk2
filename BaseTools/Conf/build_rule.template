@@ -387,7 +387,8 @@
 
     <CacheOutputFile>
         ${dst}
-        $(OUTPUT_DIR)(+)${dst}
+        $(DEBUG_DIR)(+)$(MODULE_NAME).txt
+        $(OUTPUT_DIR)(+)$(MODULE_NAME).efi
         $(BIN_DIR)(+)$(MODULE_NAME_GUID).efi
 
     <CacheOutputFile.Optional>

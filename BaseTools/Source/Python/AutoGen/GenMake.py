@@ -915,6 +915,20 @@ cleanlib:
         # in case nothing in SourceFileList
         if DepSet is None:
             DepSet = set()
+
+        # Generate MakeCache dependency I/O file lists
+        with open(os.path.join(self._AutoGenObject.MakeFileDir,"dep_files.txt"), "w") as fw:
+            for item in DepSet:
+                fw.write(str(item) + "\n")
+            for item in FileDependencyDict.keys():
+                fw.write(str(item) + "\n")
+            fw.write(os.path.join(self._AutoGenObject.MakeFileDir,"Makefile") + "\n")
+            fw.write(os.path.join(self._AutoGenObject.DebugDir,"AutoGen.h") + "\n")
+            fw.write(os.path.join(self._AutoGenObject.DebugDir,"AutoGen.c") + "\n")
+        with open(os.path.join(self._AutoGenObject.MakeFileDir,"dep_libs.txt"), "w") as fw:
+            for item in self._AutoGenObject.LibraryAutoGenList:
+                fw.write(str(item.MakeFileDir) + "\n")
+
         #
         # Extract common files list in the dependency files
         #

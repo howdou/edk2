@@ -4203,4 +4203,4 @@ class ModuleAutoGen(AutoGen):
 
     @cached_property
     def CacheOutputPath(self):
-        return os.path.join(self.MakeFileDir, 'CacheOutput')
+        return os.path.join(self.MakeFileDir, 'MakeCacheOutputFilesList')

@@ -395,6 +395,16 @@
         $(OUTPUT_DIR)(+)$(MODULE_NAME).map
         $(OUTPUT_DIR)(+)$(MODULE_NAME).pdb
 
+    <CacheOutputFile>
+        ${dst}
+        $(DEBUG_DIR)(+)$(MODULE_NAME).txt
+        $(OUTPUT_DIR)(+)$(MODULE_NAME).efi
+        $(BIN_DIR)(+)$(MODULE_NAME_GUID).efi
+
+    <CacheOutputFile.Optional>
+        $(OUTPUT_DIR)(+)$(MODULE_NAME).map
+        $(OUTPUT_DIR)(+)$(MODULE_NAME).pdb
+
     <Command.MSFT, Command.INTEL, Command.RVCT>
         "$(GENFW)" -e $(MODULE_TYPE) -o ${dst} ${src} $(GENFW_FLAGS)
         $(CP) ${dst} $(DEBUG_DIR)

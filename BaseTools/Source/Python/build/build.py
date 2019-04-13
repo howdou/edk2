@@ -48,6 +48,9 @@ import Common.GlobalData as GlobalData
 from GenFds.GenFds import GenFds, GenFdsApi
 
 from collections import OrderedDict, defaultdict
+from clcache.make_cache import VERSION
+from clcache.make_cache import CheckMakeCache
+from clcache.make_cache import SaveMakeCache
 
 # Version and Copyright
 VersionNumber = "0.60" + ' ' + gBUILD_VERSION
@@ -209,6 +212,25 @@ def LaunchCommand(Command, WorkingDir):
 
     Proc = None
     EndOfProcedure = None
+
+    # Check the MakeCache before invoke real nmake.
+    # If cache hit, directly return the previous make result from cache
+    try:
+        if Command[0].lower().endswith("nmake.exe") and Command[2].lower().endswith("tbuild"):
+            print('nmake is invoked \n')
+            print('MakeCache version=' + VERSION + '\n')
+            MakeCacheMiss = CheckMakeCache(Command, WorkingDir)
+            # if not MakeCacheMiss:
+                # ProcessMakeCacheHit(Command, WorkingDir)
+                # return "%dms" % (int(round((time.time() - BeginTime) * 1000)))
+        if Command[0].lower().endswith("nmake.exe") and not Command[2].lower().endswith("tbuild"):
+            print('invoke nmake but the 3rd Arg is not tbuild, need to check!')
+            print('Command[2].lower()= ' + Command[2].lower() + '\n')
+
+    except:
+        pass
+
+    # Pass through to invoke the real make
     try:
         # launch the command
         Proc = Popen(Command, stdout=PIPE, stderr=PIPE, env=os.environ, cwd=WorkingDir, bufsize=-1, shell=True)
@@ -258,6 +280,10 @@ def LaunchCommand(Command, WorkingDir):
             EdkLogger.info(RespContent)
 
         EdkLogger.error("build", COMMAND_FAILURE, ExtraData="%s [%s]" % (Command, WorkingDir))
+    else:
+        # Check whether need save the new make result in cache
+        if MakeCacheMiss:
+            SaveMakeCache(Command, WorkingDir)
     return "%dms" % (int(round((time.time() - BeginTime) * 1000)))
 
 ## The smallest unit that can be built in multi-thread build mode

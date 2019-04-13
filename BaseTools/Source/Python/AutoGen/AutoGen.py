@@ -24,7 +24,7 @@ from . import GenDepex
 from io import BytesIO
 
 from .StrGather import *
-from .BuildEngine import BuildRule
+from .BuildEngine import BuildRuleObj as BuildRule
 import shutil
 from Common.LongFilePathSupport import CopyLongFilePath
 from Common.BuildToolError import *
@@ -1955,28 +1955,6 @@ class PlatformAutoGen(AutoGen):
     def EdkIIBuildOption(self):
         return self._ExpandBuildOption(self.Platform.BuildOptions, EDKII_NAME)
 
-    ## Parse build_rule.txt in Conf Directory.
-    #
-    #   @retval     BuildRule object
-    #
-    @cached_property
-    def BuildRule(self):
-        BuildRuleFile = None
-        if TAB_TAT_DEFINES_BUILD_RULE_CONF in self.Workspace.TargetTxt.TargetTxtDictionary:
-            BuildRuleFile = self.Workspace.TargetTxt.TargetTxtDictionary[TAB_TAT_DEFINES_BUILD_RULE_CONF]
-        if not BuildRuleFile:
-            BuildRuleFile = gDefaultBuildRuleFile
-        RetVal = BuildRule(BuildRuleFile)
-        if RetVal._FileVersion == "":
-            RetVal._FileVersion = AutoGenReqBuildRuleVerNum
-        else:
-            if RetVal._FileVersion < AutoGenReqBuildRuleVerNum :
-                # If Build Rule's version is less than the version number required by the tools, halting the build.
-                EdkLogger.error("build", AUTOGEN_ERROR,
-                                ExtraData="The version number [%s] of build_rule.txt is less than the version number required by the AutoGen.(the minimum required version number is [%s])"\
-                                 % (RetVal._FileVersion, AutoGenReqBuildRuleVerNum))
-        return RetVal
-
     ## Summarize the packages used by modules in this platform
     @cached_property
     def PackageList(self):
@@ -3124,7 +3102,7 @@ class ModuleAutoGen(AutoGen):
     @cached_property
     def BuildRules(self):
         RetVal = {}
-        BuildRuleDatabase = self.PlatformInfo.BuildRule
+        BuildRuleDatabase = BuildRule
         for Type in BuildRuleDatabase.FileTypeList:
             #first try getting build rule by BuildRuleFamily
             RuleObject = BuildRuleDatabase[Type, self.BuildType, self.Arch, self.BuildRuleFamily]

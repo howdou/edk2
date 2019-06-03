@@ -6,13 +6,22 @@
 #
 
 class PCD_DATA():
-    def __init__(self,TokenCName,TokenSpaceGuidCName,Type,DatumType,SkuInfoList,DefaultValue):
+    def __init__(self,TokenCName,TokenSpaceGuidCName,Type,DatumType,SkuInfoList,DefaultValue,
+                 MaxDatumSize,UserDefinedDefaultStoresFlag,validateranges,
+                 validlists,expressions,CustomAttribute,TokenValue):
         self.TokenCName = TokenCName 
         self.TokenSpaceGuidCName = TokenSpaceGuidCName
         self.Type = Type
         self.DatumType = DatumType
         self.SkuInfoList = SkuInfoList
         self.DefaultValue = DefaultValue
+        self.MaxDatumSize = MaxDatumSize
+        self.UserDefinedDefaultStoresFlag = UserDefinedDefaultStoresFlag
+        self.validateranges = validateranges
+        self.validlists = validlists
+        self.expressions = expressions
+        self.CustomAttribute = CustomAttribute
+        self.TokenValue = TokenValue
 
 class MODULE_PCD_DATA(PCD_DATA):
     def __init__(self,TokenCName,TokenSpaceGuidCName,Type,DatumType,SkuInfoList,DefaultValue,ModulePath):

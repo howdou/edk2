@@ -8,6 +8,7 @@
 from AutoGen.PlatformData import *
 from Workspace.WorkspaceDatabase import BuildDB
 from Workspace.WorkspaceCommon import GetModuleLibInstances
+import Common.GlobalData as GlobalData
 
 class DataPipe(object):
     def __init__(self, BuildDir=None):
@@ -31,9 +32,26 @@ class MemoryDataPipe(DataPipe):
         self.DataContainer = {
             "PLA_PCD" : [PCD_DATA(
             pcd.TokenCName,pcd.TokenSpaceGuidCName,pcd.Type,
-            pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue) 
+            pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue,
+            pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
+                 pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
             for pcd in PlatformInfo.Platform.Pcds.values()]
             }
+         
+        #Platform Module Pcds
+        ModulePcds = {}
+        for m in PlatformInfo.Platform.Modules:
+            m_pcds =  PlatformInfo.Platform.Modules[m].Pcds
+            if m_pcds:
+                ModulePcds[(m.File,m.Root)] = [PCD_DATA(
+            pcd.TokenCName,pcd.TokenSpaceGuidCName,pcd.Type,
+            pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue,
+            pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
+                 pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
+            for pcd in PlatformInfo.Platform.Modules[m].Pcds.values()]
+             
+         
+        self.DataContainer = {"MOL_PCDS":ModulePcds}
         
         #Module's Library Instance
         ModuleLibs = {}
@@ -59,14 +77,7 @@ class MemoryDataPipe(DataPipe):
                               "MOL_BO":module_build_opt
                               }
         
-        #Platform Module Pcds
-        ModulePcds = {}
-        for m in PlatformInfo.Platform.Modules:
-            m_pcds =  PlatformInfo.Platform.Modules[m].Pcds
-            if m_pcds:
-                ModulePcds[(m.File,m.Root)] = m_pcds
         
-        self.DataContainer = {"MOL_PCDS":ModulePcds}
         
         #Platform Info
         PInfo = {
@@ -80,9 +91,12 @@ class MemoryDataPipe(DataPipe):
             }
         self.DataContainer = {'P_Info':PInfo}
         
-        #Pcd TokenNumber
-        self.DataContainer = {"PCD_TNUM":PlatformInfo.PcdTokenNumber}
+        self.DataContainer = {'M_Name':PlatformInfo.UniqueBaseName}
         
+        self.DataContainer = {"ToolChainFamily": PlatformInfo.ToolChainFamily}
         
-
+        self.DataContainer = {"BuildRuleFamily": PlatformInfo.BuildRuleFamily}
         
+        self.DataContainer = {"MixedPcd":GlobalData.MixedPcd}
+        
+        self.DataContainer = {"BuildOptPcd":GlobalData.MixedPcd}

@@ -283,16 +283,10 @@ class ModuleAutoGen(AutoGen):
 
     @property
     def UniqueBaseName(self):
-        BaseName = self.Name
-        for Module in self.PlatformInfo.ModuleAutoGenList:
-            if Module.MetaFile == self.MetaFile:
-                continue
-            if Module.Name == self.Name:
-                if uuid.UUID(Module.Guid) == uuid.UUID(self.Guid):
-                    EdkLogger.error("build", FILE_DUPLICATED, 'Modules have same BaseName and FILE_GUID:\n'
-                                    '  %s\n  %s' % (Module.MetaFile, self.MetaFile))
-                BaseName = '%s_%s' % (self.Name, self.Guid)
-        return BaseName
+        ModuleNames = self.DataPipe.Get("M_Name")
+        if not ModuleNames:
+            return self.Name
+        return ModuleNames.get(self.Name,self.Name)
 
     # Macros could be used in build_rule.txt (also Makefile)
     @cached_property

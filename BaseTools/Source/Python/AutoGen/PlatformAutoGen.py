@@ -439,15 +439,16 @@ class WorkspaceAutoGen(AutoGen):
         Pkgs = {}
         for Arch in self.ArchList:    
             Platform = self.BuildDatabase[self.MetaFile, Arch, self.BuildTarget, self.ToolChain]
-            PGen = PlatformAutoGen(self, self.MetaFile, self.BuildTarget, self.ToolChain, Arch)
             PkgSet = set()
+            for mb in [self.BuildDatabase[m, Arch, self.BuildTarget, self.ToolChain] for m in Platform.Modules]:
+                PkgSet.update(mb.Packages)
             for Inf in ModuleList:
                 ModuleFile = PathClass(NormPath(Inf), GlobalData.gWorkspace, Arch)
                 if ModuleFile in Platform.Modules:
                     continue
                 ModuleData = self.BuildDatabase[ModuleFile, Arch, self.BuildTarget, self.ToolChain]
                 PkgSet.update(ModuleData.Packages)
-            Pkgs[Arch] = list(PkgSet) + list(PGen.PackageList)
+            Pkgs[Arch] = list(PkgSet)
         return Pkgs
 
     def VerifyPcdDeclearation(self,PcdSet):        
@@ -492,10 +493,22 @@ class WorkspaceAutoGen(AutoGen):
             #
             # Explicitly collect platform's dynamic PCDs
             #
-#             Pa.CollectPlatformDynamicPcds()
-#             Pa.CollectFixedAtBuildPcds()
+            Pa.CollectPlatformDynamicPcds()
+            Pa.CollectFixedAtBuildPcds()
             self.AutoGenObjectList.append(Pa)
-
+        # We need to calculate the PcdTokenNumber after all Arch Pcds are collected.
+        for Arch in self.ArchList:
+            #Pcd TokenNumber
+            self.UpdateModuleDataPipe(Arch,  {"PCD_TNUM":Pa.PcdTokenNumber})
+            
+    def UpdateModuleDataPipe(self,arch, attr_dict):
+        for (Target, Toolchain, Arch, MetaFile) in AutoGen.Cache():
+            if Arch != arch:
+                continue
+            try:
+                AutoGen.Cache()[(Target, Toolchain, Arch, MetaFile)].DataPipe.DataContainer = attr_dict
+            except Exception:
+                pass
     #
     # Generate Package level hash value
     #
@@ -937,25 +950,7 @@ class PlatformAutoGen(AutoGen):
     _NonDynaPcdList_ = []
     _PlatformPcds = {}
 
-    #
-    # The priority list while override build option
-    #
-    PrioList = {"0x11111"  : 16,     #  TARGET_TOOLCHAIN_ARCH_COMMANDTYPE_ATTRIBUTE (Highest)
-                "0x01111"  : 15,     #  ******_TOOLCHAIN_ARCH_COMMANDTYPE_ATTRIBUTE
-                "0x10111"  : 14,     #  TARGET_*********_ARCH_COMMANDTYPE_ATTRIBUTE
-                "0x00111"  : 13,     #  ******_*********_ARCH_COMMANDTYPE_ATTRIBUTE
-                "0x11011"  : 12,     #  TARGET_TOOLCHAIN_****_COMMANDTYPE_ATTRIBUTE
-                "0x01011"  : 11,     #  ******_TOOLCHAIN_****_COMMANDTYPE_ATTRIBUTE
-                "0x10011"  : 10,     #  TARGET_*********_****_COMMANDTYPE_ATTRIBUTE
-                "0x00011"  : 9,      #  ******_*********_****_COMMANDTYPE_ATTRIBUTE
-                "0x11101"  : 8,      #  TARGET_TOOLCHAIN_ARCH_***********_ATTRIBUTE
-                "0x01101"  : 7,      #  ******_TOOLCHAIN_ARCH_***********_ATTRIBUTE
-                "0x10101"  : 6,      #  TARGET_*********_ARCH_***********_ATTRIBUTE
-                "0x00101"  : 5,      #  ******_*********_ARCH_***********_ATTRIBUTE
-                "0x11001"  : 4,      #  TARGET_TOOLCHAIN_****_***********_ATTRIBUTE
-                "0x01001"  : 3,      #  ******_TOOLCHAIN_****_***********_ATTRIBUTE
-                "0x10001"  : 2,      #  TARGET_*********_****_***********_ATTRIBUTE
-                "0x00001"  : 1}      #  ******_*********_****_***********_ATTRIBUTE (Lowest)
+    
 
     ## Initialize PlatformAutoGen
     #
@@ -2124,166 +2119,6 @@ class PlatformAutoGen(AutoGen):
                     Pcd.MaxDatumSize = str(len(Value) - 1)
         return list(Pcds.values())
 
-
-
-    ## Calculate the priority value of the build option
-    #
-    # @param    Key    Build option definition contain: TARGET_TOOLCHAIN_ARCH_COMMANDTYPE_ATTRIBUTE
-    #
-    # @retval   Value  Priority value based on the priority list.
-    #
-    def CalculatePriorityValue(self, Key):
-        Target, ToolChain, Arch, CommandType, Attr = Key.split('_')
-        PriorityValue = 0x11111
-        if Target == TAB_STAR:
-            PriorityValue &= 0x01111
-        if ToolChain == TAB_STAR:
-            PriorityValue &= 0x10111
-        if Arch == TAB_STAR:
-            PriorityValue &= 0x11011
-        if CommandType == TAB_STAR:
-            PriorityValue &= 0x11101
-        if Attr == TAB_STAR:
-            PriorityValue &= 0x11110
-
-        return self.PrioList["0x%0.5x" % PriorityValue]
-
-
-    ## Expand * in build option key
-    #
-    #   @param  Options     Options to be expanded
-    #   @param  ToolDef     Use specified ToolDef instead of full version.
-    #                       This is needed during initialization to prevent
-    #                       infinite recursion betweeh BuildOptions,
-    #                       ToolDefinition, and this function.
-    #
-    #   @retval options     Options expanded
-    #
-    def _ExpandBuildOption(self, Options, ModuleStyle=None, ToolDef=None):
-        if not ToolDef:
-            ToolDef = self.ToolDefinition
-        BuildOptions = {}
-        FamilyMatch  = False
-        FamilyIsNull = True
-
-        OverrideList = {}
-        #
-        # Construct a list contain the build options which need override.
-        #
-        for Key in Options:
-            #
-            # Key[0] -- tool family
-            # Key[1] -- TARGET_TOOLCHAIN_ARCH_COMMANDTYPE_ATTRIBUTE
-            #
-            if (Key[0] == self.BuildRuleFamily and
-                (ModuleStyle is None or len(Key) < 3 or (len(Key) > 2 and Key[2] == ModuleStyle))):
-                Target, ToolChain, Arch, CommandType, Attr = Key[1].split('_')
-                if (Target == self.BuildTarget or Target == TAB_STAR) and\
-                    (ToolChain == self.ToolChain or ToolChain == TAB_STAR) and\
-                    (Arch == self.Arch or Arch == TAB_STAR) and\
-                    Options[Key].startswith("="):
-
-                    if OverrideList.get(Key[1]) is not None:
-                        OverrideList.pop(Key[1])
-                    OverrideList[Key[1]] = Options[Key]
-
-        #
-        # Use the highest priority value.
-        #
-        if (len(OverrideList) >= 2):
-            KeyList = list(OverrideList.keys())
-            for Index in range(len(KeyList)):
-                NowKey = KeyList[Index]
-                Target1, ToolChain1, Arch1, CommandType1, Attr1 = NowKey.split("_")
-                for Index1 in range(len(KeyList) - Index - 1):
-                    NextKey = KeyList[Index1 + Index + 1]
-                    #
-                    # Compare two Key, if one is included by another, choose the higher priority one
-                    #
-                    Target2, ToolChain2, Arch2, CommandType2, Attr2 = NextKey.split("_")
-                    if (Target1 == Target2 or Target1 == TAB_STAR or Target2 == TAB_STAR) and\
-                        (ToolChain1 == ToolChain2 or ToolChain1 == TAB_STAR or ToolChain2 == TAB_STAR) and\
-                        (Arch1 == Arch2 or Arch1 == TAB_STAR or Arch2 == TAB_STAR) and\
-                        (CommandType1 == CommandType2 or CommandType1 == TAB_STAR or CommandType2 == TAB_STAR) and\
-                        (Attr1 == Attr2 or Attr1 == TAB_STAR or Attr2 == TAB_STAR):
-
-                        if self.CalculatePriorityValue(NowKey) > self.CalculatePriorityValue(NextKey):
-                            if Options.get((self.BuildRuleFamily, NextKey)) is not None:
-                                Options.pop((self.BuildRuleFamily, NextKey))
-                        else:
-                            if Options.get((self.BuildRuleFamily, NowKey)) is not None:
-                                Options.pop((self.BuildRuleFamily, NowKey))
-
-        for Key in Options:
-            if ModuleStyle is not None and len (Key) > 2:
-                # Check Module style is EDK or EDKII.
-                # Only append build option for the matched style module.
-                if ModuleStyle == EDK_NAME and Key[2] != EDK_NAME:
-                    continue
-                elif ModuleStyle == EDKII_NAME and Key[2] != EDKII_NAME:
-                    continue
-            Family = Key[0]
-            Target, Tag, Arch, Tool, Attr = Key[1].split("_")
-            # if tool chain family doesn't match, skip it
-            if Tool in ToolDef and Family != "":
-                FamilyIsNull = False
-                if ToolDef[Tool].get(TAB_TOD_DEFINES_BUILDRULEFAMILY, "") != "":
-                    if Family != ToolDef[Tool][TAB_TOD_DEFINES_BUILDRULEFAMILY]:
-                        continue
-                elif Family != ToolDef[Tool][TAB_TOD_DEFINES_FAMILY]:
-                    continue
-                FamilyMatch = True
-            # expand any wildcard
-            if Target == TAB_STAR or Target == self.BuildTarget:
-                if Tag == TAB_STAR or Tag == self.ToolChain:
-                    if Arch == TAB_STAR or Arch == self.Arch:
-                        if Tool not in BuildOptions:
-                            BuildOptions[Tool] = {}
-                        if Attr != "FLAGS" or Attr not in BuildOptions[Tool] or Options[Key].startswith('='):
-                            BuildOptions[Tool][Attr] = Options[Key]
-                        else:
-                            # append options for the same tool except PATH
-                            if Attr != 'PATH':
-                                BuildOptions[Tool][Attr] += " " + Options[Key]
-                            else:
-                                BuildOptions[Tool][Attr] = Options[Key]
-        # Build Option Family has been checked, which need't to be checked again for family.
-        if FamilyMatch or FamilyIsNull:
-            return BuildOptions
-
-        for Key in Options:
-            if ModuleStyle is not None and len (Key) > 2:
-                # Check Module style is EDK or EDKII.
-                # Only append build option for the matched style module.
-                if ModuleStyle == EDK_NAME and Key[2] != EDK_NAME:
-                    continue
-                elif ModuleStyle == EDKII_NAME and Key[2] != EDKII_NAME:
-                    continue
-            Family = Key[0]
-            Target, Tag, Arch, Tool, Attr = Key[1].split("_")
-            # if tool chain family doesn't match, skip it
-            if Tool not in ToolDef or Family == "":
-                continue
-            # option has been added before
-            if Family != ToolDef[Tool][TAB_TOD_DEFINES_FAMILY]:
-                continue
-
-            # expand any wildcard
-            if Target == TAB_STAR or Target == self.BuildTarget:
-                if Tag == TAB_STAR or Tag == self.ToolChain:
-                    if Arch == TAB_STAR or Arch == self.Arch:
-                        if Tool not in BuildOptions:
-                            BuildOptions[Tool] = {}
-                        if Attr != "FLAGS" or Attr not in BuildOptions[Tool] or Options[Key].startswith('='):
-                            BuildOptions[Tool][Attr] = Options[Key]
-                        else:
-                            # append options for the same tool except PATH
-                            if Attr != 'PATH':
-                                BuildOptions[Tool][Attr] += " " + Options[Key]
-                            else:
-                                BuildOptions[Tool][Attr] = Options[Key]
-        return BuildOptions
-
     ## Append build options in platform to a module
     #
     #   @param  Module  The module to which the build options will be appended
@@ -2347,3 +2182,23 @@ class PlatformAutoGen(AutoGen):
             PlatformModuleOptions = {}
         
         return ModuleTypeOptions,PlatformModuleOptions
+
+    @cached_property
+    def UniqueBaseName(self):
+        retVal ={}
+        name_path_map = {}
+        for Module in self._MbList:
+            name_path_map[Module.BaseName] = set()
+        for Module in self._MbList:
+            name_path_map[Module.BaseName].add(Module.MetaFile)
+        for name in name_path_map:
+            if len(name_path_map[name]) > 1:
+                guidset = set()
+                for metafile in name_path_map[name]:
+                    m = self.BuildDatabase[metafile, self.Arch, self.BuildTarget, self.ToolChain]
+                    retVal[name] = '%s_%s' % (name, m.Guid)
+                    guidset.add(m.Guid)
+                    if len(guidset) > 1:
+                        EdkLogger.error("build", FILE_DUPLICATED, 'Modules have same BaseName and FILE_GUID:\n'
+                                    '  %s\n  %s' % (name_path_map[name][0], name_path_map[name][1]))
+        return retVal

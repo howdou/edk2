@@ -599,7 +599,6 @@ def GuidValue(CName, PackageList, Inffile = None):
         if CName in GuidKeys:
             return P.Guids[CName]
     return None
-    return None
 
 ## A string template class
 #

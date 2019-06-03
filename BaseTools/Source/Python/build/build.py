@@ -34,9 +34,10 @@ from Common.TargetTxtClassObject import TargetTxt
 from Common.ToolDefClassObject import ToolDef
 from Common.DataType import *
 from Common.BuildVersion import gBUILD_VERSION
-from AutoGen.AutoGen import *
+from AutoGen.PlatformAutoGen import *
+from AutoGen.ModuleAutoGen import ModuleAutoGen
 from Common.BuildToolError import *
-from Workspace.WorkspaceDatabase import WorkspaceDatabase
+from Workspace.WorkspaceDatabase import BuildDB
 from Common.MultipleWorkspace import MultipleWorkspace as mws
 
 from BuildReport import BuildReport
@@ -766,7 +767,7 @@ class Build():
         GlobalData.gConfDirectory = ConfDirectoryPath
         GlobalData.gDatabasePath = os.path.normpath(os.path.join(ConfDirectoryPath, GlobalData.gDatabasePath))
 
-        self.Db = WorkspaceDatabase()
+        self.Db = BuildDB
         self.BuildDatabase = self.Db.BuildObject
         self.Platform = None
         self.ToolChainFamily = None
@@ -1683,7 +1684,7 @@ class Build():
                     Pa = PlatformAutoGen(Wa, self.PlatformFile, BuildTarget, ToolChain, Arch)
                     for Module in Pa.Platform.Modules:
                         # Get ModuleAutoGen object to generate C code file and makefile
-                        Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile)
+                        Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
                         if Ma is None:
                             continue
                         self.BuildModules.append(Ma)
@@ -1781,7 +1782,7 @@ class Build():
                     Pa = PlatformAutoGen(Wa, self.PlatformFile, BuildTarget, ToolChain, Arch)
                     for Module in Pa.Platform.Modules:
                         if self.ModuleFile.Dir == Module.Dir and self.ModuleFile.Name == Module.Name:
-                            Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile)
+                            Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
                             if Ma is None:
                                 continue
                             MaList.append(Ma)
@@ -1967,7 +1968,7 @@ class Build():
                             ModuleList.append(Inf)
                     for Module in ModuleList:
                         # Get ModuleAutoGen object to generate C code file and makefile
-                        Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile)
+                        Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
 
                         if Ma is None:
                             continue

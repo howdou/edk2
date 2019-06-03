@@ -203,6 +203,8 @@ class WorkspaceDatabase(object):
             EdkLogger.error('build', PARSER_ERROR, "Failed to parser DSC file: %s" % Dscfile)
         return Platform
 
+BuildDB = WorkspaceDatabase()
+
 ##
 #
 # This acts like the main() function for the script, unless it is 'import'ed into another

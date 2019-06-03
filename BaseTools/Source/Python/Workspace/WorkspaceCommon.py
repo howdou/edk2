@@ -87,6 +87,8 @@ def GetLiabraryInstances(Module, Platform, BuildDatabase, Arch, Target, Toolchai
     return GetModuleLibInstances(Module, Platform, BuildDatabase, Arch, Target, Toolchain)
 
 def GetModuleLibInstances(Module, Platform, BuildDatabase, Arch, Target, Toolchain, FileName = '', EdkLogger = None):
+    if Module.LibInstances:
+        return Module.LibInstances
     ModuleType = Module.ModuleType
 
     # add forced library instances (specified under LibraryClasses sections)
@@ -245,4 +247,7 @@ def GetModuleLibInstances(Module, Platform, BuildDatabase, Arch, Target, Toolcha
     # The DAG Topo sort produces the destructor order, so the list of constructors must generated in the reverse order
     #
     SortedLibraryList.reverse()
+    Module.LibInstances = SortedLibraryList
+    SortedLibraryList = [lib.SetReferenceModule(Module) for lib in SortedLibraryList]
     return SortedLibraryList
+

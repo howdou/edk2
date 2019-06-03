@@ -154,6 +154,12 @@ class InfBuildData(ModuleBuildClassObject):
         self._PcdComments = None
         self._BuildOptions = None
         self._DependencyFileList = None
+        self.LibInstances = None
+        self.ReferenceModules = set()
+        
+    def SetReferenceModule(self,Module):
+        self.ReferenceModules.add(Module)
+        return self
 
     ## XXX[key] = value
     def __setitem__(self, key, value):
@@ -704,6 +710,38 @@ class InfBuildData(ModuleBuildClassObject):
         RetVal.update(self._GetPcd(MODEL_PCD_DYNAMIC_EX))
         return RetVal
 
+    ## Get the list of PCDs from current module
+    #
+    #   @retval     list                    The list of PCD
+    #
+    @cached_property
+    def ModulePcdList(self):
+        # apply PCD settings from platform
+        RetVal = self.Pcds
+        return RetVal
+    
+    ## Get the list of PCDs from dependent libraries
+    #
+    #   @retval     list                    The list of PCD
+    #
+    @cached_property
+    def LibraryPcdList(self):
+        if bool(self.LibraryClass):
+            return []
+        RetVal = {}
+        Pcds = set()
+        # get PCDs from dependent libraries
+        for Library in self.LibInstances:
+            PcdsInLibrary = OrderedDict()
+            for Key in Library.Pcds:
+                # skip duplicated PCDs
+                if Key in self.Pcds or Key in Pcds:
+                    continue
+                Pcds.add(Key)
+                PcdsInLibrary[Key] = copy.copy(Library.Pcds[Key])
+            RetVal[Library] = PcdsInLibrary
+        return RetVal
+
     @cached_property
     def PcdsName(self):
         PcdsName = set()
@@ -1030,3 +1068,10 @@ class InfBuildData(ModuleBuildClassObject):
         if (self.Binaries and not self.Sources) or GlobalData.gIgnoreSource:
             return True
         return False
+#
+# extend lists contained in a dictionary with lists stored in another dictionary
+# if CopyToDict is not derived from DefaultDict(list) then this may raise exception
+#
+def ExtendCopyDictionaryLists(CopyToDict, CopyFromDict):
+    for Key in CopyFromDict:
+        CopyToDict[Key].extend(CopyFromDict[Key])

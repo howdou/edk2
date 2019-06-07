@@ -16,6 +16,7 @@ import Common.EdkLogger as EdkLogger
 from Common.BuildToolError import OPTION_CONFLICT,FORMAT_INVALID,RESOURCE_NOT_AVAILABLE
 from Common.MultipleWorkspace import MultipleWorkspace as mws
 from collections import defaultdict
+from Common.Misc import PathClass
 import os
 
 
@@ -253,13 +254,26 @@ class PlatformInfo(AutoGenInfo):
 
         self.SourceDir = MetaFile.SubDir
         self.DataPipe = DataPipe
+    @cached_property
+    def _AsBuildModuleList(self):
+        retVal = self.DataPipe.Get("AsBuildModuleList")
+        if retVal is None:
+            retVal = {}
+        return retVal
+
+    ## Test if a module is supported by the platform
+    #
+    #  An error will be raised directly if the module or its arch is not supported
+    #  by the platform or current configuration
+    #
+    def ValidModule(self, Module):
+        return Module in self.Platform.Modules or Module in self.Platform.LibraryInstances \
+            or Module in self._AsBuildModuleList
+
     def LoadToolDefine(self):
         pass
 
     def LoadBuildCommand(self):
-        pass
-
-    def LoadPackageList(self):
         pass
 
     @cached_property
@@ -275,9 +289,25 @@ class PlatformInfo(AutoGenInfo):
         if retVal is None:
             retVal = {}
         return retVal
+    
+    @cached_property
+    def _MbList(self):
+        return [self.Wa.BuildDatabase[m, self.Arch, self.BuildTarget, self.ToolChain] for m in self.Platform.Modules]
+
     @cached_property
     def PackageList(self):
-        return self.LoadPackageList()
+        RetVal = set()
+        for Mb in self._MbList:
+            RetVal.update(Mb.Packages)
+            for lb in Mb.LibInstances:
+                RetVal.update(lb.Packages)
+        #Collect package set information from INF of FDF
+        for ModuleFile in self._AsBuildModuleList:
+            if ModuleFile in self.Platform.Modules:
+                continue
+            ModuleData = self.BuildDatabase[ModuleFile, self.Arch, self.BuildTarget, self.ToolChain]
+            RetVal.update(ModuleData.Packages)
+        return list(RetVal)
 
     ## Return the directory to store all intermediate and final files built
     @cached_property
@@ -329,7 +359,10 @@ class PlatformInfo(AutoGenInfo):
     #
     @cached_property
     def BuildCommand(self):
-        return self.LoadBuildCommand()
+        retVal = self.DataPipe.Get("BuildCommand")
+        if retVal is None:
+            retVal = []
+        return retVal
 
     @cached_property
     def PcdTokenNumber(self):
@@ -495,8 +528,25 @@ class PlatformInfo(AutoGenInfo):
     @cached_property
     def Pcds(self):
         PlatformPcdData = self.DataPipe.Get("PLA_PCD")
+        for pcd in PlatformPcdData:
+            for skuid in pcd.SkuInfoList:
+                pcd.SkuInfoList[skuid] = self.CreateSkuInfoFromDict(pcd.SkuInfoList[skuid])
         return {(pcddata.TokenCName,pcddata.TokenSpaceGuidCName):pcddata for pcddata in PlatformPcdData}
 
+    def CreateSkuInfoFromDict(self,SkuInfoDict):
+        return SkuInfoClass(
+            SkuInfoDict.get("SkuIdName"),
+            SkuInfoDict.get("SkuId"),
+            SkuInfoDict.get("VariableName"),
+            SkuInfoDict.get("VariableGuid"),
+            SkuInfoDict.get("VariableOffset"),
+            SkuInfoDict.get("HiiDefaultValue"),
+            SkuInfoDict.get("VpdOffset"),
+            SkuInfoDict.get("DefaultValue"),
+            SkuInfoDict.get("VariableGuidValue"),
+            SkuInfoDict.get("VariableAttribute",""),
+            SkuInfoDict.get("DefaultStore",None)
+            )
     @cached_property
     def MixedPcd(self):
         return self.DataPipe.Get("MixedPcd")
@@ -551,7 +601,11 @@ class PlatformInfo(AutoGenInfo):
         alldeps = self.DataPipe.Get("DEPS")
         if alldeps is None:
             alldeps = {}
-        return alldeps.get(module.MetaFile,[])
+        mod_libs = alldeps.get((module.MetaFile.File,module.MetaFile.Root,module.Arch),[])
+        retVal = []
+        for (file_path,root,arch) in mod_libs:
+            retVal.append(self.Wa.BuildDatabase[PathClass(file_path,root), arch, self.Target,self.ToolChain])
+        return retVal
     
     ## Parse build_rule.txt in Conf Directory.
     #

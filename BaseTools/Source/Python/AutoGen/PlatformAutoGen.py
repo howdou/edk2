@@ -499,6 +499,7 @@ class WorkspaceAutoGen(AutoGen):
         # We need to calculate the PcdTokenNumber after all Arch Pcds are collected.
         for Arch in self.ArchList:
             #Pcd TokenNumber
+            Pa = PlatformAutoGen(self, self.MetaFile, self.BuildTarget, self.ToolChain, Arch)
             self.UpdateModuleDataPipe(Arch,  {"PCD_TNUM":Pa.PcdTokenNumber})
             
     def UpdateModuleDataPipe(self,arch, attr_dict):

@@ -198,11 +198,11 @@ class ModuleAutoGen(AutoGen):
     TimeDict = {}
 
     def __new__(cls, Workspace, MetaFile, Target, Toolchain, Arch, *args, **kwargs):
-        # check if this module is employed by active platform
-#         if not PlatformAutoGen(Workspace, args[0], Target, Toolchain, Arch).ValidModule(MetaFile):
-#             EdkLogger.verbose("Module [%s] for [%s] is not employed by active platform\n" \
-#                               % (MetaFile, Arch))
-#             return None
+#         check if this module is employed by active platform
+        if not PlatformInfo(Workspace, args[0], Target, Toolchain, Arch,args[-1]).ValidModule(MetaFile):
+            EdkLogger.verbose("Module [%s] for [%s] is not employed by active platform\n" \
+                              % (MetaFile, Arch))
+            return None
         return super(ModuleAutoGen, cls).__new__(cls, Workspace, MetaFile, Target, Toolchain, Arch, *args, **kwargs)
 
     ## Initialize ModuleAutoGen
@@ -1004,7 +1004,7 @@ class ModuleAutoGen(AutoGen):
 
         return RetVal
     @cached_property
-    def _PcdCommons(self):
+    def _PcdComments(self):
         ReVal = OrderedListDict()
         ExtendCopyDictionaryLists(ReVal, self.Module.PcdComments)
         if not self.IsLibrary:

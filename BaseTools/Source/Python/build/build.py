@@ -341,9 +341,9 @@ class ModuleMakeUnit(BuildUnit):
     #   @param  Obj         The ModuleAutoGen object the build is working on
     #   @param  Target      The build target name, one of gSupportedTarget
     #
-    def __init__(self, Obj, Target):
-        Dependency = [ModuleMakeUnit(La, Target) for La in Obj.LibraryAutoGenList]
-        BuildUnit.__init__(self, Obj, Obj.BuildCommand, Target, Dependency, Obj.MakeFileDir)
+    def __init__(self, Obj, BuildCommand,Target):
+        Dependency = [ModuleMakeUnit(La, BuildCommand,Target) for La in Obj.LibraryAutoGenList]
+        BuildUnit.__init__(self, Obj, BuildCommand, Target, Dependency, Obj.MakeFileDir)
         if Target in [None, "", "all"]:
             self.Target = "tbuild"
 
@@ -362,10 +362,10 @@ class PlatformMakeUnit(BuildUnit):
     #   @param  Obj         The PlatformAutoGen object the build is working on
     #   @param  Target      The build target name, one of gSupportedTarget
     #
-    def __init__(self, Obj, Target):
-        Dependency = [ModuleMakeUnit(Lib, Target) for Lib in self.BuildObject.LibraryAutoGenList]
-        Dependency.extend([ModuleMakeUnit(Mod, Target) for Mod in self.BuildObject.ModuleAutoGenList])
-        BuildUnit.__init__(self, Obj, Obj.BuildCommand, Target, Dependency, Obj.MakeFileDir)
+    def __init__(self, Obj, BuildCommand, Target):
+        Dependency = [ModuleMakeUnit(Lib, BuildCommand, Target) for Lib in self.BuildObject.LibraryAutoGenList]
+        Dependency.extend([ModuleMakeUnit(Mod, BuildCommand,Target) for Mod in self.BuildObject.ModuleAutoGenList])
+        BuildUnit.__init__(self, Obj, BuildCommand, Target, Dependency, Obj.MakeFileDir)
 
 ## The class representing the task of a module build or platform build
 #
@@ -1816,7 +1816,7 @@ class Build():
                     MakeStart = time.time()
                     for Ma in self.BuildModules:
                         if not Ma.IsBinaryModule:
-                            Bt = BuildTask.New(ModuleMakeUnit(Ma, self.Target))
+                            Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))
                         # Break build if any build thread has error
                         if BuildTask.HasError():
                             # we need a full version of makefile for platform
@@ -1969,9 +1969,10 @@ class Build():
                     for Module in ModuleList:
                         # Get ModuleAutoGen object to generate C code file and makefile
                         Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
-
                         if Ma is None:
                             continue
+                        if Ma.PcdIsDriver:
+                            Ma.PlatformInfo = Pa
                         if Ma.CanSkipbyHash():
                             self.HashSkipModules.append(Ma)
                             continue
@@ -2002,7 +2003,7 @@ class Build():
                     for Ma in self.BuildModules:
                         # Generate build task for the module
                         if not Ma.IsBinaryModule:
-                            Bt = BuildTask.New(ModuleMakeUnit(Ma, self.Target))
+                            Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))
                         # Break build if any build thread has error
                         if BuildTask.HasError():
                             # we need a full version of makefile for platform

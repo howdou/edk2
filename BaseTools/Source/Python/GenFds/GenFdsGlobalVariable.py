@@ -95,22 +95,28 @@ class GenFdsGlobalVariable:
     def _LoadBuildRule():
         if GenFdsGlobalVariable.__BuildRuleDatabase:
             return GenFdsGlobalVariable.__BuildRuleDatabase
-        GenFdsGlobalVariable.__BuildRuleDatabase = BuildRule
-        ToolDefinitionFile = TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_CONF]
-        if ToolDefinitionFile == '':
-            ToolDefinitionFile = "Conf/tools_def.txt"
-        if os.path.isfile(ToolDefinitionFile):
-            ToolDefinition = ToolDef.ToolsDefTxtDatabase
-            if DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY in ToolDefinition \
-               and GenFdsGlobalVariable.ToolChainTag in ToolDefinition[DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY] \
-               and ToolDefinition[DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY][GenFdsGlobalVariable.ToolChainTag]:
-                GenFdsGlobalVariable.BuildRuleFamily = ToolDefinition[DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY][GenFdsGlobalVariable.ToolChainTag]
+        BuildConfigurationFile = os.path.normpath(os.path.join(GenFdsGlobalVariable.ConfDir, "target.txt"))
+        if os.path.isfile(BuildConfigurationFile) == True:
+            TargetTxt.LoadTargetTxtFile(BuildConfigurationFile)
+            if DataType.TAB_TAT_DEFINES_BUILD_RULE_CONF in TargetTxt.TargetTxtDictionary:
+                BuildRuleFile = TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_BUILD_RULE_CONF]
+            if not BuildRuleFile:
+                BuildRuleFile = 'Conf/build_rule.txt'
+            GenFdsGlobalVariable.__BuildRuleDatabase = BuildRule(BuildRuleFile)
+            ToolDefinitionFile = TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_CONF]
+            if ToolDefinitionFile == '':
+                ToolDefinitionFile = "Conf/tools_def.txt"
+            if os.path.isfile(ToolDefinitionFile):
+                ToolDefinition = ToolDef.ToolsDefTxtDatabase
+                if DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY in ToolDefinition \
+                   and GenFdsGlobalVariable.ToolChainTag in ToolDefinition[DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY] \
+                   and ToolDefinition[DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY][GenFdsGlobalVariable.ToolChainTag]:
+                    GenFdsGlobalVariable.BuildRuleFamily = ToolDefinition[DataType.TAB_TOD_DEFINES_BUILDRULEFAMILY][GenFdsGlobalVariable.ToolChainTag]
 
-            if DataType.TAB_TOD_DEFINES_FAMILY in ToolDefinition \
-               and GenFdsGlobalVariable.ToolChainTag in ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY] \
-               and ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY][GenFdsGlobalVariable.ToolChainTag]:
-                GenFdsGlobalVariable.ToolChainFamily = ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY][GenFdsGlobalVariable.ToolChainTag]
-        return GenFdsGlobalVariable.__BuildRuleDatabase
+                if DataType.TAB_TOD_DEFINES_FAMILY in ToolDefinition \
+                   and GenFdsGlobalVariable.ToolChainTag in ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY] \
+                   and ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY][GenFdsGlobalVariable.ToolChainTag]:
+                    GenFdsGlobalVariable.ToolChainFamily = ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY][GenFdsGlobalVariable.ToolChainTag]
 
     ## GetBuildRules
     #    @param Inf: object of InfBuildData

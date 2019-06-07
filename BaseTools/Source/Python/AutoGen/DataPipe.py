@@ -32,7 +32,7 @@ class MemoryDataPipe(DataPipe):
         self.DataContainer = {
             "PLA_PCD" : [PCD_DATA(
             pcd.TokenCName,pcd.TokenSpaceGuidCName,pcd.Type,
-            pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue,
+            pcd.DatumType,{skuid:skuobj.__dict__ for (skuid,skuobj) in pcd.SkuInfoList.items()},pcd.DefaultValue,
             pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
                  pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
             for pcd in PlatformInfo.Platform.Pcds.values()]
@@ -45,7 +45,7 @@ class MemoryDataPipe(DataPipe):
             if m_pcds:
                 ModulePcds[(m.File,m.Root)] = [PCD_DATA(
             pcd.TokenCName,pcd.TokenSpaceGuidCName,pcd.Type,
-            pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue,
+            pcd.DatumType,{skuid:skuobj.__dict__ for (skuid,skuobj) in pcd.SkuInfoList.items()},pcd.DefaultValue,
             pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
                  pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
             for pcd in PlatformInfo.Platform.Modules[m].Pcds.values()]
@@ -58,7 +58,7 @@ class MemoryDataPipe(DataPipe):
         for m in PlatformInfo.Platform.Modules:
             module_obj = BuildDB.BuildObject[m,PlatformInfo.Arch,PlatformInfo.BuildTarget,PlatformInfo.ToolChain]
             Libs = GetModuleLibInstances(module_obj, PlatformInfo.Platform, BuildDB.BuildObject, PlatformInfo.Arch,PlatformInfo.BuildTarget,PlatformInfo.ToolChain)
-            ModuleLibs[m] = Libs
+            ModuleLibs[(m.File,m.Root,module_obj.Arch)] = [(l.MetaFile.File,l.MetaFile.Root,l.Arch) for l in Libs]
         self.DataContainer = {"DEPS":ModuleLibs}
         
         #Platform BuildOptions
@@ -100,3 +100,8 @@ class MemoryDataPipe(DataPipe):
         self.DataContainer = {"MixedPcd":GlobalData.MixedPcd}
         
         self.DataContainer = {"BuildOptPcd":GlobalData.MixedPcd}
+        
+        self.DataContainer = {"BuildCommand": PlatformInfo.BuildCommand}
+        
+        self.DataContainer = {"AsBuildModuleList": PlatformInfo._AsBuildModuleList}
+        

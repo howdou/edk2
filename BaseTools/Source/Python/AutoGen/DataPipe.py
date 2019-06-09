@@ -9,6 +9,7 @@ from AutoGen.PlatformData import *
 from Workspace.WorkspaceDatabase import BuildDB
 from Workspace.WorkspaceCommon import GetModuleLibInstances
 import Common.GlobalData as GlobalData
+import os
 
 class DataPipe(object):
     def __init__(self, BuildDir=None):
@@ -32,7 +33,7 @@ class MemoryDataPipe(DataPipe):
         self.DataContainer = {
             "PLA_PCD" : [PCD_DATA(
             pcd.TokenCName,pcd.TokenSpaceGuidCName,pcd.Type,
-            pcd.DatumType,{skuid:skuobj.__dict__ for (skuid,skuobj) in pcd.SkuInfoList.items()},pcd.DefaultValue,
+            pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue,
             pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
                  pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
             for pcd in PlatformInfo.Platform.Pcds.values()]
@@ -45,7 +46,7 @@ class MemoryDataPipe(DataPipe):
             if m_pcds:
                 ModulePcds[(m.File,m.Root)] = [PCD_DATA(
             pcd.TokenCName,pcd.TokenSpaceGuidCName,pcd.Type,
-            pcd.DatumType,{skuid:skuobj.__dict__ for (skuid,skuobj) in pcd.SkuInfoList.items()},pcd.DefaultValue,
+            pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue,
             pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
                  pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
             for pcd in PlatformInfo.Platform.Modules[m].Pcds.values()]
@@ -99,9 +100,15 @@ class MemoryDataPipe(DataPipe):
         
         self.DataContainer = {"MixedPcd":GlobalData.MixedPcd}
         
-        self.DataContainer = {"BuildOptPcd":GlobalData.MixedPcd}
+        self.DataContainer = {"BuildOptPcd":GlobalData.BuildOptionPcd}
         
         self.DataContainer = {"BuildCommand": PlatformInfo.BuildCommand}
         
         self.DataContainer = {"AsBuildModuleList": PlatformInfo._AsBuildModuleList}
+        
+        self.DataContainer = {"G_defines": GlobalData.gGlobalDefines}
+        
+        self.DataContainer = {"Env_Var": os.environ._data}
+        
+        self.DataContainer = {"GuidDict": PlatformInfo.Platform._GuidDict}
         

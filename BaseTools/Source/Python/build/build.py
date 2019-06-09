@@ -49,6 +49,8 @@ import Common.GlobalData as GlobalData
 from GenFds.GenFds import GenFds, GenFdsApi
 
 from collections import OrderedDict, defaultdict
+import multiprocessing as mp
+from AutoGen.AutoGenWorker import AutoGenWorker
 
 # Version and Copyright
 VersionNumber = "0.60" + ' ' + gBUILD_VERSION
@@ -1183,6 +1185,16 @@ class Build():
         # skip file generation for cleanxxx targets, run and fds target
         if Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
             # for target which must generate AutoGen code and makefile
+            mqueue = mp.Queue()
+            for m in AutoGenObject.GetAllModuleInfo:
+                mqueue.put(m)
+            auto_workers = [AutoGenWorker(mqueue,AutoGenObject.DataPipe) for i in range(mp.cpu_count())]
+            for w in auto_workers:
+                w.start()
+            for w in auto_workers:
+                w.join()
+            self.Progress.Stop("done!")
+            return True
             if not self.SkipAutoGen or Target == 'genc':
                 self.Progress.Start("Generating code")
                 AutoGenObject.CreateCodeFile(CreateDepsCodeFile)
@@ -2499,7 +2511,16 @@ def Main():
     return ReturnCode
 
 if __name__ == '__main__':
+   
+    import cProfile,pstats
+    pr = cProfile.Profile()
+    pr.enable()
     r = Main()
+    pr.disable()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr).sort_stats(sortby)
+    ps.print_stats(50)
+
     ## 0-127 is a safe return range, and 1 is a standard default error
     if r < 0 or r > 127: r = 1
     sys.exit(r)

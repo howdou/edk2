@@ -49,6 +49,7 @@ from Common.caching import cached_class_function
 from AutoGen.DataPipe import MemoryDataPipe
 from AutoGen.ModuleAutoGen import ModuleAutoGen
 from AutoGen.AutoGen import AutoGen, _SplitOption
+import pickle
 
 ## Regular expression for splitting Dependency Expression string into tokens
 gDepexTokenPattern = re.compile("(\(|\)|\w+| \S+\.inf)")
@@ -1004,6 +1005,10 @@ class PlatformAutoGen(AutoGen):
         
         self.DataPipe = MemoryDataPipe(self.BuildDir)
         self.DataPipe.FillData(self)
+        begin = time.perf_counter()
+        p = pickle.dumps(self.DataPipe)
+        self.DataPipe = pickle.loads(p)
+        print (time.perf_counter() - begin)
         return True
 
     @cached_class_function
@@ -1936,6 +1941,15 @@ class PlatformAutoGen(AutoGen):
     def ValidModule(self, Module):
         return Module in self.Platform.Modules or Module in self.Platform.LibraryInstances \
             or Module in self._AsBuildModuleList
+    @cached_property
+    def GetAllModuleInfo(self):
+        ModuleLibs = set()
+        for m in self.Platform.Modules:
+            module_obj = self.BuildDatabase[m,self.Arch,self.BuildTarget,self.ToolChain]
+            ModuleLibs.add((m.File,m.Root,module_obj.Arch))
+            Libs = GetModuleLibInstances(module_obj, self.Platform, self.BuildDatabase, self.Arch,self.BuildTarget,self.ToolChain)
+            ModuleLibs.update( set([(l.MetaFile.File,l.MetaFile.Root,l.Arch) for l in Libs]))
+        return ModuleLibs
 
     ## Resolve the library classes in a module to library instances
     #

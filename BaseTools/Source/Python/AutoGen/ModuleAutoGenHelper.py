@@ -270,12 +270,6 @@ class PlatformInfo(AutoGenInfo):
         return Module in self.Platform.Modules or Module in self.Platform.LibraryInstances \
             or Module in self._AsBuildModuleList
 
-    def LoadToolDefine(self):
-        pass
-
-    def LoadBuildCommand(self):
-        pass
-
     @cached_property
     def ToolChainFamily(self):
         retVal = self.DataPipe.Get("ToolChainFamily")
@@ -420,7 +414,7 @@ class PlatformInfo(AutoGenInfo):
             # Add Flexible PCD format parse
             if ToPcd.DefaultValue:
                 try:
-                    ToPcd.DefaultValue = ValueExpressionEx(ToPcd.DefaultValue, ToPcd.DatumType, self.Platform._GuidDict)(True)
+                    ToPcd.DefaultValue = ValueExpressionEx(ToPcd.DefaultValue, ToPcd.DatumType, self._GuidDict)(True)
                 except BadExpression as Value:
                     EdkLogger.error('Parser', FORMAT_INVALID, 'PCD [%s.%s] Value "%s", %s' %(ToPcd.TokenSpaceGuidCName, ToPcd.TokenCName, ToPcd.DefaultValue, Value),
                                         File=self.MetaFile)
@@ -528,9 +522,9 @@ class PlatformInfo(AutoGenInfo):
     @cached_property
     def Pcds(self):
         PlatformPcdData = self.DataPipe.Get("PLA_PCD")
-        for pcd in PlatformPcdData:
-            for skuid in pcd.SkuInfoList:
-                pcd.SkuInfoList[skuid] = self.CreateSkuInfoFromDict(pcd.SkuInfoList[skuid])
+#         for pcd in PlatformPcdData:
+#             for skuid in pcd.SkuInfoList:
+#                 pcd.SkuInfoList[skuid] = self.CreateSkuInfoFromDict(pcd.SkuInfoList[skuid])
         return {(pcddata.TokenCName,pcddata.TokenSpaceGuidCName):pcddata for pcddata in PlatformPcdData}
 
     def CreateSkuInfoFromDict(self,SkuInfoDict):
@@ -550,7 +544,12 @@ class PlatformInfo(AutoGenInfo):
     @cached_property
     def MixedPcd(self):
         return self.DataPipe.Get("MixedPcd")
-    
+    @cached_property
+    def _GuidDict(self):
+        RetVal = self.DataPipe.Get("GuidDict") 
+        if RetVal is None:
+            RetVal = {}
+        return RetVal
     @cached_property
     def BuildOptionPcd(self):
         return self.DataPipe.Get("BuildOptPcd")

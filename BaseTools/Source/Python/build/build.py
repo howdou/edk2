@@ -1189,7 +1189,7 @@ class Build():
             for m in AutoGenObject.GetAllModuleInfo:
                 mqueue.put(m)
             begin = time.perf_counter()
-            auto_workers = [AutoGenWorker(mqueue,AutoGenObject.DataPipe) for i in range(1)]
+            auto_workers = [AutoGenWorker(mqueue,AutoGenObject.DataPipe) for i in range(mp.cpu_count()//2)]
             print ("Create Process: ", time.perf_counter() - begin)
             for w in auto_workers:
                 w.start()
@@ -2017,7 +2017,7 @@ class Build():
                     for m in Pa.GetAllModuleInfo:
                         mqueue.put(m)
                     begin = time.perf_counter()
-                    auto_workers = [AutoGenWorker(mqueue,Pa.DataPipe) for i in range(4)]
+                    auto_workers = [AutoGenWorker(mqueue,Pa.DataPipe) for i in range(mp.cpu_count()//2)]
                     print ("Create Process: ", time.perf_counter() - begin)
                     for w in auto_workers:
                         w.start()

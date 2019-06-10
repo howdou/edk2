@@ -1188,7 +1188,9 @@ class Build():
             mqueue = mp.Queue()
             for m in AutoGenObject.GetAllModuleInfo:
                 mqueue.put(m)
-            auto_workers = [AutoGenWorker(mqueue,AutoGenObject.DataPipe) for i in range(mp.cpu_count())]
+            begin = time.perf_counter()
+            auto_workers = [AutoGenWorker(mqueue,AutoGenObject.DataPipe) for i in range(1)]
+            print ("Create Process: ", time.perf_counter() - begin)
             for w in auto_workers:
                 w.start()
             for w in auto_workers:
@@ -1694,12 +1696,12 @@ class Build():
                 for Arch in Wa.ArchList:
                     GlobalData.gGlobalDefines['ARCH'] = Arch
                     Pa = PlatformAutoGen(Wa, self.PlatformFile, BuildTarget, ToolChain, Arch)
-                    for Module in Pa.Platform.Modules:
-                        # Get ModuleAutoGen object to generate C code file and makefile
-                        Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
-                        if Ma is None:
-                            continue
-                        self.BuildModules.append(Ma)
+#                     for Module in Pa.Platform.Modules:
+#                         # Get ModuleAutoGen object to generate C code file and makefile
+#                         Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
+#                         if Ma is None:
+#                             continue
+#                         self.BuildModules.append(Ma)
                     self._BuildPa(self.Target, Pa, FfsCommand=CmdListDict)
 
                 # Create MAP file when Load Fix Address is enabled.
@@ -1963,6 +1965,7 @@ class Build():
                 ExitFlag.clear()
                 self.AutoGenTime += int(round((time.time() - WorkspaceAutoGenTime)))
                 for Arch in Wa.ArchList:
+                    PcdMa = None
                     AutoGenStart = time.time()
                     GlobalData.gGlobalDefines['ARCH'] = Arch
                     Pa = PlatformAutoGen(Wa, self.PlatformFile, BuildTarget, ToolChain, Arch)
@@ -1985,30 +1988,44 @@ class Build():
                             continue
                         if Ma.PcdIsDriver:
                             Ma.PlatformInfo = Pa
+                            PcdMa = Ma
                         if Ma.CanSkipbyHash():
                             self.HashSkipModules.append(Ma)
                             continue
 
-                        # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
-                        if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
-                            # for target which must generate AutoGen code and makefile
-                            if not self.SkipAutoGen or self.Target == 'genc':
-                                Ma.CreateCodeFile(True)
-                            if self.Target == "genc":
-                                continue
-
-                            if not self.SkipAutoGen or self.Target == 'genmake':
-                                if CmdListDict and self.Fdf and (Module.File, Arch) in CmdListDict:
-                                    Ma.CreateMakeFile(True, CmdListDict[Module.File, Arch])
-                                    del CmdListDict[Module.File, Arch]
-                                else:
-                                    Ma.CreateMakeFile(True)
-                            if self.Target == "genmake":
-                                continue
+#                         # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
+#                         if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
+#                             # for target which must generate AutoGen code and makefile
+#                             if not self.SkipAutoGen or self.Target == 'genc':
+#                                 Ma.CreateCodeFile(True)
+#                             if self.Target == "genc":
+#                                 continue
+# 
+#                             if not self.SkipAutoGen or self.Target == 'genmake':
+#                                 if CmdListDict and self.Fdf and (Module.File, Arch) in CmdListDict:
+#                                     Ma.CreateMakeFile(True, CmdListDict[Module.File, Arch])
+#                                     del CmdListDict[Module.File, Arch]
+#                                 else:
+#                                     Ma.CreateMakeFile(True)
+#                             if self.Target == "genmake":
+#                                 continue
                         self.BuildModules.append(Ma)
                         # Initialize all modules in tracking to False (FAIL)
                         if Ma not in GlobalData.gModuleBuildTracking:
                             GlobalData.gModuleBuildTracking[Ma] = False
+                    mqueue = mp.Queue()
+                    for m in Pa.GetAllModuleInfo:
+                        mqueue.put(m)
+                    begin = time.perf_counter()
+                    auto_workers = [AutoGenWorker(mqueue,Pa.DataPipe) for i in range(4)]
+                    print ("Create Process: ", time.perf_counter() - begin)
+                    for w in auto_workers:
+                        w.start()
+                    PcdMa.CreateCodeFile(True)
+                    PcdMa.CreateMakeFile()
+                    PcdMa.CreateAsBuiltInf()
+                    for w in auto_workers:
+                        w.join()
                     self.Progress.Stop("done!")
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                     MakeStart = time.time()
@@ -2512,14 +2529,14 @@ def Main():
 
 if __name__ == '__main__':
    
-    import cProfile,pstats
-    pr = cProfile.Profile()
-    pr.enable()
+#     import cProfile,pstats
+#     pr = cProfile.Profile()
+#     pr.enable()
     r = Main()
-    pr.disable()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr).sort_stats(sortby)
-    ps.print_stats(50)
+#     pr.disable()
+#     sortby = 'cumulative'
+#     ps = pstats.Stats(pr).sort_stats(sortby)
+#     ps.print_stats(50)
 
     ## 0-127 is a safe return range, and 1 is a standard default error
     if r < 0 or r > 127: r = 1

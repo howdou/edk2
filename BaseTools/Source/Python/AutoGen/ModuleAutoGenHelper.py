@@ -283,7 +283,7 @@ class PlatformInfo(AutoGenInfo):
         if retVal is None:
             retVal = {}
         return retVal
-    
+
     @cached_property
     def _MbList(self):
         return [self.Wa.BuildDatabase[m, self.Arch, self.BuildTarget, self.ToolChain] for m in self.Platform.Modules]
@@ -291,16 +291,8 @@ class PlatformInfo(AutoGenInfo):
     @cached_property
     def PackageList(self):
         RetVal = set()
-        for Mb in self._MbList:
-            RetVal.update(Mb.Packages)
-            for lb in Mb.LibInstances:
-                RetVal.update(lb.Packages)
-        #Collect package set information from INF of FDF
-        for ModuleFile in self._AsBuildModuleList:
-            if ModuleFile in self.Platform.Modules:
-                continue
-            ModuleData = self.BuildDatabase[ModuleFile, self.Arch, self.BuildTarget, self.ToolChain]
-            RetVal.update(ModuleData.Packages)
+        for dec_file,Arch in self.DataPipe.Get("PackageList"):
+            RetVal.add(self.Wa.BuildDatabase[dec_file,Arch,self.BuildTarget, self.ToolChain])
         return list(RetVal)
 
     ## Return the directory to store all intermediate and final files built

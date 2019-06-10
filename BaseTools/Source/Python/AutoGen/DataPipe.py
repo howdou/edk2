@@ -110,5 +110,7 @@ class MemoryDataPipe(DataPipe):
         
         self.DataContainer = {"Env_Var": os.environ._data}
         
+        self.DataContainer = {"PackageList": [(dec.MetaFile,dec.Arch) for dec in PlatformInfo.PackageList]}
+        
         self.DataContainer = {"GuidDict": PlatformInfo.Platform._GuidDict}
         

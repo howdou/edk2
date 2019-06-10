@@ -156,6 +156,8 @@ class InfBuildData(ModuleBuildClassObject):
         self._DependencyFileList = None
         self.LibInstances = None
         self.ReferenceModules = set()
+        self.Guids
+        self.Pcds
         
     def SetReferenceModule(self,Module):
         self.ReferenceModules.add(Module)

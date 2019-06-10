@@ -1661,7 +1661,7 @@ def CreatePcdCode(Info, AutoGenC, AutoGenH):
             AutoGenC.Append("\n// Definition of PCDs used in libraries\n")
         for Pcd in Info.LibraryPcdList:
             CreateModulePcdCode(Info, AutoGenC, AutoGenC, Pcd)
-#    CreatePcdDatabaseCode(Info, AutoGenC, AutoGenH)
+    CreatePcdDatabaseCode(Info, AutoGenC, AutoGenH)
 
 ## Create code for unicode string definition
 #

@@ -1040,7 +1040,7 @@ class ModuleAutoGen(AutoGen):
     #
     @cached_property
     def GuidList(self):
-        RetVal = OrderedDict(self.Module.Guids)
+        RetVal = self.Module.Guids
         for Library in self.DependentLibraryList:
             RetVal.update(Library.Guids)
             ExtendCopyDictionaryLists(self._GuidComments, Library.GuidComments)
@@ -1664,9 +1664,7 @@ class ModuleAutoGen(AutoGen):
             return
 
         self.GenFfsList = GenFfsList
-        if not self.IsLibrary and CreateLibraryMakeFile:
-            for LibraryAutoGen in self.LibraryAutoGenList:
-                LibraryAutoGen.CreateMakeFile()
+
 
         if self.CanSkip():
             return
@@ -1707,9 +1705,7 @@ class ModuleAutoGen(AutoGen):
                 self.CopyBinaryFiles()
             return
 
-        if not self.IsLibrary and CreateLibraryCodeFile:
-            for LibraryAutoGen in self.LibraryAutoGenList:
-                LibraryAutoGen.CreateCodeFile()
+
 
         if self.CanSkip():
             return

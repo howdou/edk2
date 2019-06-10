@@ -1005,10 +1005,7 @@ class PlatformAutoGen(AutoGen):
         
         self.DataPipe = MemoryDataPipe(self.BuildDir)
         self.DataPipe.FillData(self)
-        begin = time.perf_counter()
-        p = pickle.dumps(self.DataPipe)
-        self.DataPipe = pickle.loads(p)
-        print (time.perf_counter() - begin)
+
         return True
 
     @cached_class_function
@@ -1942,10 +1939,12 @@ class PlatformAutoGen(AutoGen):
         return Module in self.Platform.Modules or Module in self.Platform.LibraryInstances \
             or Module in self._AsBuildModuleList
     @cached_property
-    def GetAllModuleInfo(self):
+    def GetAllModuleInfo(self,WithoutPcd=True):
         ModuleLibs = set()
         for m in self.Platform.Modules:
             module_obj = self.BuildDatabase[m,self.Arch,self.BuildTarget,self.ToolChain]
+            if WithoutPcd and module_obj.PcdIsDriver:
+                continue
             ModuleLibs.add((m.File,m.Root,module_obj.Arch))
             Libs = GetModuleLibInstances(module_obj, self.Platform, self.BuildDatabase, self.Arch,self.BuildTarget,self.ToolChain)
             ModuleLibs.update( set([(l.MetaFile.File,l.MetaFile.Root,l.Arch) for l in Libs]))

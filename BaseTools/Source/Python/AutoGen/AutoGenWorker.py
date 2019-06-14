@@ -37,13 +37,14 @@ class AutoGenWorker(mp.Process):
             workspacedir,active_p,target,toolchain,archlist
             )
         GlobalData.gGlobalDefines = self.data_pipe.Get("G_defines")
+        GlobalData.gCommandLineDefines = self.data_pipe.Get("CL_defines")
         os.environ._data = self.data_pipe.Get("Env_Var")
         GlobalData.gWorkspace = workspacedir
         GlobalData.gDisableIncludePathCheck = False
         module_count = 0
         while not self.module_queue.empty():
             module_count += 1
-            module_file,module_root,module_arch = self.module_queue.get()
+            module_file,module_root,module_arch,IsLib = self.module_queue.get()
 #             begin = time.perf_counter()
             module_metafile = PathClass(module_file,module_root)
             arch = module_arch
@@ -53,6 +54,7 @@ class AutoGenWorker(mp.Process):
                                          self.data_pipe.Get("P_Info").get("WorkspaceDir"))
             
             Ma = ModuleAutoGen(self.Wa,module_metafile,target,toolchain,arch,PlatformMetaFile,self.data_pipe)
+            Ma.IsLibrary = IsLib
             Ma.CreateCodeFile(True)
             Ma.CreateMakeFile()
             Ma.CreateAsBuiltInf()

@@ -1943,11 +1943,12 @@ class PlatformAutoGen(AutoGen):
         ModuleLibs = set()
         for m in self.Platform.Modules:
             module_obj = self.BuildDatabase[m,self.Arch,self.BuildTarget,self.ToolChain]
+            Libs = GetModuleLibInstances(module_obj, self.Platform, self.BuildDatabase, self.Arch,self.BuildTarget,self.ToolChain)
+            ModuleLibs.update( set([(l.MetaFile.File,l.MetaFile.Root,l.Arch,True) for l in Libs]))
             if WithoutPcd and module_obj.PcdIsDriver:
                 continue
-            ModuleLibs.add((m.File,m.Root,module_obj.Arch))
-            Libs = GetModuleLibInstances(module_obj, self.Platform, self.BuildDatabase, self.Arch,self.BuildTarget,self.ToolChain)
-            ModuleLibs.update( set([(l.MetaFile.File,l.MetaFile.Root,l.Arch) for l in Libs]))
+            ModuleLibs.add((m.File,m.Root,module_obj.Arch,False))
+
         return ModuleLibs
 
     ## Resolve the library classes in a module to library instances

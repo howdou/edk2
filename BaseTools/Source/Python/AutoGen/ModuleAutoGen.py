@@ -1763,6 +1763,7 @@ class ModuleAutoGen(AutoGen):
                         self.PlatformInfo.MetaFile,
                         self.DataPipe
                         )
+            La.IsLibrary = True
             if La not in RetVal:
                 RetVal.append(La)
                 for Lib in La.CodaTargetList:

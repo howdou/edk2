@@ -108,6 +108,8 @@ class MemoryDataPipe(DataPipe):
         
         self.DataContainer = {"G_defines": GlobalData.gGlobalDefines}
         
+        self.DataContainer = {"CL_defines": GlobalData.gCommandLineDefines}
+        
         self.DataContainer = {"Env_Var": os.environ._data}
         
         self.DataContainer = {"PackageList": [(dec.MetaFile,dec.Arch) for dec in PlatformInfo.PackageList]}

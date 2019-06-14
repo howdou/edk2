@@ -1965,6 +1965,7 @@ class Build():
                 ExitFlag.clear()
                 self.AutoGenTime += int(round((time.time() - WorkspaceAutoGenTime)))
                 for Arch in Wa.ArchList:
+                    BuildModules = []
                     PcdMa = None
                     AutoGenStart = time.time()
                     GlobalData.gGlobalDefines['ARCH'] = Arch
@@ -2009,7 +2010,7 @@ class Build():
 #                                     Ma.CreateMakeFile(True)
 #                             if self.Target == "genmake":
 #                                 continue
-                        self.BuildModules.append(Ma)
+                        BuildModules.append(Ma)
                         # Initialize all modules in tracking to False (FAIL)
                         if Ma not in GlobalData.gModuleBuildTracking:
                             GlobalData.gModuleBuildTracking[Ma] = False
@@ -2021,15 +2022,16 @@ class Build():
                     print ("Create Process: ", time.perf_counter() - begin)
                     for w in auto_workers:
                         w.start()
-                    PcdMa.CreateCodeFile(True)
-                    PcdMa.CreateMakeFile()
-                    PcdMa.CreateAsBuiltInf()
+                    if PcdMa:
+                        PcdMa.CreateCodeFile(True)
+                        PcdMa.CreateMakeFile()
+                        PcdMa.CreateAsBuiltInf()
                     for w in auto_workers:
                         w.join()
                     self.Progress.Stop("done!")
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                     MakeStart = time.time()
-                    for Ma in self.BuildModules:
+                    for Ma in BuildModules:
                         # Generate build task for the module
                         if not Ma.IsBinaryModule:
                             Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))

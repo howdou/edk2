@@ -550,7 +550,7 @@ class PlatformInfo(AutoGenInfo):
         ModuleBuildOptions = self.DataPipe.Get("MOL_BO")
         ModuleOptionFromDsc = ModuleBuildOptions.get((module.MetaFile.File,module.MetaFile.Root))
         if ModuleOptionFromDsc:
-            ModuleTypeOptions, PlatformModuleOptions = ModuleOptionFromDsc
+            ModuleTypeOptions, PlatformModuleOptions = ModuleOptionFromDsc["ModuleTypeOptions"],ModuleOptionFromDsc["PlatformModuleOptions"]
         else:
             ModuleTypeOptions, PlatformModuleOptions = {}, {}
         ToolDefinition = self.DataPipe.Get("TOOLDEF")

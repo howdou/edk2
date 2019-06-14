@@ -117,7 +117,7 @@ class GenFdsGlobalVariable:
                    and GenFdsGlobalVariable.ToolChainTag in ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY] \
                    and ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY][GenFdsGlobalVariable.ToolChainTag]:
                     GenFdsGlobalVariable.ToolChainFamily = ToolDefinition[DataType.TAB_TOD_DEFINES_FAMILY][GenFdsGlobalVariable.ToolChainTag]
-
+        return GenFdsGlobalVariable.__BuildRuleDatabase
     ## GetBuildRules
     #    @param Inf: object of InfBuildData
     #    @param Arch: current arch

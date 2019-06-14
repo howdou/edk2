@@ -42,6 +42,9 @@ class AutoGenWorker(mp.Process):
         GlobalData.gWorkspace = workspacedir
         GlobalData.gDisableIncludePathCheck = False
         module_count = 0
+        FfsCmd = self.data_pipe.Get("FfsCommand")
+        if FfsCmd is None:
+            FfsCmd = {}
         while not self.module_queue.empty():
             module_count += 1
             module_file,module_root,module_arch,IsLib = self.module_queue.get()
@@ -56,7 +59,7 @@ class AutoGenWorker(mp.Process):
             Ma = ModuleAutoGen(self.Wa,module_metafile,target,toolchain,arch,PlatformMetaFile,self.data_pipe)
             Ma.IsLibrary = IsLib
             Ma.CreateCodeFile(True)
-            Ma.CreateMakeFile()
+            Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
             Ma.CreateAsBuiltInf()
 #             print ("Processs ID: %d" % os.getpid(), module_file, time.perf_counter() - begin)
         print ("Processs ID: %d Run %d modules " % (os.getpid(),module_count), time.perf_counter() - begin)

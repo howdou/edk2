@@ -1178,10 +1178,11 @@ class Build():
     #   @param  CreateDepModuleMakeFile     Flag used to indicate creating makefile
     #                                       for dependent modules/Libraries
     #
-    def _BuildPa(self, Target, AutoGenObject, CreateDepsCodeFile=True, CreateDepsMakeFile=True, BuildModule=False, FfsCommand={}):
+    def _BuildPa(self, Target, AutoGenObject, CreateDepsCodeFile=True, CreateDepsMakeFile=True, BuildModule=False, FfsCommand=None):
         if AutoGenObject is None:
             return False
-
+        if FfsCommand is None:
+            FfsCommand = {}
         # skip file generation for cleanxxx targets, run and fds target
         if Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
             # for target which must generate AutoGen code and makefile
@@ -1189,6 +1190,7 @@ class Build():
             for m in AutoGenObject.GetAllModuleInfo:
                 mqueue.put(m)
             begin = time.perf_counter()
+            AutoGenObject.DataPipe.DataContainer = {"FfsCommand":FfsCommand}
             auto_workers = [AutoGenWorker(mqueue,AutoGenObject.DataPipe) for i in range(mp.cpu_count()//2)]
             print ("Create Process: ", time.perf_counter() - begin)
             for w in auto_workers:
@@ -1956,7 +1958,7 @@ class Build():
                 Wa.CreateMakeFile(False)
 
                 # Add ffs build to makefile
-                CmdListDict = None
+                CmdListDict = {}
                 if GlobalData.gEnableGenfdsMultiThread and self.Fdf:
                     CmdListDict = self._GenFfsCmd(Wa.ArchList)
 
@@ -2018,13 +2020,14 @@ class Build():
                     for m in Pa.GetAllModuleInfo:
                         mqueue.put(m)
                     begin = time.perf_counter()
+                    Pa.DataPipe.DataContainer = {"FfsCommand":CmdListDict}
                     auto_workers = [AutoGenWorker(mqueue,Pa.DataPipe) for i in range(mp.cpu_count()//2)]
                     print ("Create Process: ", time.perf_counter() - begin)
                     for w in auto_workers:
                         w.start()
                     if PcdMa:
                         PcdMa.CreateCodeFile(True)
-                        PcdMa.CreateMakeFile()
+                        PcdMa.CreateMakeFile(GenFfsList = CmdListDict.get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                         PcdMa.CreateAsBuiltInf()
                     for w in auto_workers:
                         w.join()

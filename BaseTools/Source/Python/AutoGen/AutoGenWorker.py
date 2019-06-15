@@ -58,9 +58,9 @@ class AutoGenWorker(mp.Process):
             
             Ma = ModuleAutoGen(self.Wa,module_metafile,target,toolchain,arch,PlatformMetaFile,self.data_pipe)
             Ma.IsLibrary = IsLib
-            Ma.CreateCodeFile(True)
+            Ma.CreateCodeFile()
             Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
-            Ma.CreateAsBuiltInf()
+
 #             print ("Processs ID: %d" % os.getpid(), module_file, time.perf_counter() - begin)
         print ("Processs ID: %d Run %d modules " % (os.getpid(),module_count), time.perf_counter() - begin)
     def run(self):
@@ -72,7 +72,6 @@ class AutoGenWorker(mp.Process):
 #         print (time.perf_counter() - begin)
 #         pr.disable()
 #         sortby = 'tottime'
-#         ps = pstats.Stats(pr).sort_stats(sortby)
-#         ps.print_stats(50)
-        
-        
+#         with open('statistics_%d.txt' % os.getpid(), 'w') as stream:
+#             ps = pstats.Stats(pr,stream=stream).sort_stats(sortby)
+#             ps.print_stats(50)

@@ -10,6 +10,8 @@ from Workspace.WorkspaceDatabase import BuildDB
 from Workspace.WorkspaceCommon import GetModuleLibInstances
 import Common.GlobalData as GlobalData
 import os
+import pickle
+from pickle import HIGHEST_PROTOCOL
 
 class DataPipe(object):
     def __init__(self, BuildDir=None):
@@ -21,6 +23,14 @@ class MemoryDataPipe(DataPipe):
     def Get(self,key):
         return self.data_container.get(key)
     
+    def dump(self,file_path):
+        with open(file_path,'wb') as fd:
+            pickle.dump(self.data_container,fd,pickle.HIGHEST_PROTOCOL)
+
+    def load(self,file_path):
+        with open(file_path,'rb') as fd:
+            self.data_container = pickle.load(fd)
+
     @property
     def DataContainer(self):
         return self.data_container

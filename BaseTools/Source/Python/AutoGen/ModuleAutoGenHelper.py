@@ -4,7 +4,7 @@
 # Copyright (c) 2019, Intel Corporation. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
-from Workspace.WorkspaceDatabase import WorkspaceDatabase
+from Workspace.WorkspaceDatabase import WorkspaceDatabase,BuildDB
 from Common.caching import cached_property
 from AutoGen.BuildEngine import BuildRule,AutoGenReqBuildRuleVerNum
 from Common.Misc import CheckPcdDatum,GuidValue
@@ -232,7 +232,7 @@ class AutoGenInfo(object):
 class WorkSpaceInfo(AutoGenInfo):
     def __init__(self,Workspace, MetaFile, Target, ToolChain, Arch):
         self._SrcTimeStamp = 0
-        self.Db = WorkspaceDatabase()
+        self.Db = BuildDB
         self.BuildDatabase = self.Db.BuildObject
         self.Target = Target
         self.ToolChain = ToolChain

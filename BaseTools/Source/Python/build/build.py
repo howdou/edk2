@@ -2021,6 +2021,11 @@ class Build():
                         mqueue.put(m)
                     begin = time.perf_counter()
                     Pa.DataPipe.DataContainer = {"FfsCommand":CmdListDict}
+                    Pa.DataPipe.dump("GlobalVar_%s_%s.bin" % (Pa.Name,Pa.Arch))
+                    with open("%s_files_%s.txt"  % (Pa.Name,Pa.Arch),'w') as fw:
+                        for item in Pa.GetAllModuleInfo:
+                            fw.write(",".join([str(i) for i in item]))
+                            fw.write("\n")
                     auto_workers = [AutoGenWorker(mqueue,Pa.DataPipe) for i in range(mp.cpu_count()//2)]
                     print ("Create Process: ", time.perf_counter() - begin)
                     for w in auto_workers:

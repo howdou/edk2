@@ -12,17 +12,13 @@ import Common.GlobalData as GlobalData
 import os,time
 import Common.EdkLogger as EdkLogger
 from Common.MultipleWorkspace import MultipleWorkspace as mws
+import threading
 
-class AutoGenWorker(mp.Process):
+class Worker():
     def __init__(self,module_queue,data_pipe):
-        super(AutoGenWorker,self).__init__()
         self.module_queue = module_queue
         self.data_pipe = data_pipe
-    
     def test_run(self):
-        
-        EdkLogger.Initialize()
-        EdkLogger.SetLevel(EdkLogger.QUIET)
         
         begin = time.perf_counter()
         target = self.data_pipe.Get("P_Info").get("Target")
@@ -63,11 +59,42 @@ class AutoGenWorker(mp.Process):
 
 #             print ("Processs ID: %d" % os.getpid(), module_file, time.perf_counter() - begin)
         print ("Processs ID: %d Run %d modules " % (os.getpid(),module_count), time.perf_counter() - begin)
+    
+
+class AutoGenWorkerInThread(threading.Thread,Worker):
+    def __init__(self,module_queue,data_pipe):
+        threading.Thread.__init__(self)
+        Worker.__init__(self,module_queue,data_pipe)
+        self.module_queue = module_queue
+        self.data_pipe = data_pipe
+    
     def run(self):
 #         import cProfile,pstats
 #         pr = cProfile.Profile()
 #         pr.enable()
 #         begin = time.perf_counter()
+        self.test_run()
+#         print (time.perf_counter() - begin)
+#         pr.disable()
+#         sortby = 'tottime'
+#         with open('statistics_%d.txt' % os.getpid(), 'w') as stream:
+#             ps = pstats.Stats(pr,stream=stream).sort_stats(sortby)
+#             ps.print_stats(50)
+
+class AutoGenWorkerInProcess(mp.Process,Worker):
+    def __init__(self,module_queue,data_pipe):
+        mp.Process.__init__(self)
+        Worker.__init__(self,module_queue,data_pipe)
+        self.module_queue = module_queue
+        self.data_pipe = data_pipe
+    
+    def run(self):
+#         import cProfile,pstats
+#         pr = cProfile.Profile()
+#         pr.enable()
+#         begin = time.perf_counter()
+        EdkLogger.Initialize()
+        EdkLogger.SetLevel(EdkLogger.QUIET)
         self.test_run()
 #         print (time.perf_counter() - begin)
 #         pr.disable()

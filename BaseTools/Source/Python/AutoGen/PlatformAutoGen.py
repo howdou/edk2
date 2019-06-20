@@ -66,9 +66,9 @@ class WorkspaceAutoGen(AutoGen):
     # call super().__init__ then call the worker function with different parameter count
     def __init__(self, Workspace, MetaFile, Target, Toolchain, Arch, *args, **kwargs):
         if not hasattr(self, "_Init"):
-            begin = time.perf_counter()
+            begin = time.clock()
             self._InitWorker(Workspace, MetaFile, Target, Toolchain, Arch, *args, **kwargs)
-            print(time.perf_counter() - begin)
+            print(time.clock() - begin)
             self._Init = True
 
     ## Initialize WorkspaceAutoGen

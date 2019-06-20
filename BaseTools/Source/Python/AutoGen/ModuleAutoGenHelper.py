@@ -4,6 +4,7 @@
 # Copyright (c) 2019, Intel Corporation. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
+from __future__ import absolute_import
 from Workspace.WorkspaceDatabase import WorkspaceDatabase,BuildDB
 from Common.caching import cached_property
 from AutoGen.BuildEngine import BuildRule,AutoGenReqBuildRuleVerNum
@@ -59,6 +60,9 @@ class AutoGenInfo(object):
     #   @param  *args           The specific class related parameters
     #   @param  **kwargs        The specific class related dict parameters
     #
+    @classmethod
+    def GetCache(cls):
+        return cls.__ObjectCache
     def __new__(cls, Workspace, MetaFile, Target, Toolchain, Arch, *args, **kwargs):
         # check if the object has been created
         Key = (Target, Toolchain, Arch, MetaFile)

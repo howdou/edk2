@@ -4,7 +4,7 @@
 # Copyright (c) 2019, Intel Corporation. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
-
+from __future__ import absolute_import
 from AutoGen.AutoGen import AutoGen
 from Common.LongFilePathSupport import CopyLongFilePath
 from Common.BuildToolError import *
@@ -277,8 +277,8 @@ class ModuleAutoGen(AutoGen):
         RetVal = {}
         for Pcd in self.FixedAtBuildPcds:
             if Pcd.DatumType == TAB_VOID:
-                if '{}.{}'.format(Pcd.TokenSpaceGuidCName, Pcd.TokenCName) not in RetVal:
-                    RetVal['{}.{}'.format(Pcd.TokenSpaceGuidCName, Pcd.TokenCName)] = Pcd.DefaultValue
+                if '.'.join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName)) not in RetVal:
+                    RetVal['.'.join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName))] = Pcd.DefaultValue
         return RetVal
 
     @property
@@ -535,9 +535,12 @@ class ModuleAutoGen(AutoGen):
         #
         # Append depex from dependent libraries, if not "BEFORE", "AFTER" expression
         #
-        for M in [self.Module] + self.DependentLibraryList:
+        FixedVoidTypePcds = {}
+        for M in [self] + self.LibraryAutoGenList:
+            FixedVoidTypePcds.update(M.FixedVoidTypePcds)
+        for M in [self] + self.LibraryAutoGenList:
             Inherited = False
-            for D in M.Depex[self.Arch, self.ModuleType]:
+            for D in M.Module.Depex[self.Arch, self.ModuleType]:
                 if DepexList != []:
                     DepexList.append('AND')
                 DepexList.append('(')
@@ -547,27 +550,22 @@ class ModuleAutoGen(AutoGen):
                     if '.' not in item:
                         NewList.append(item)
                     else:
-                        FixedVoidTypePcds = {}
-                        if item in self.FixedVoidTypePcds:
-                            FixedVoidTypePcds = self.FixedVoidTypePcds
-                        elif M in self.PlatformInfo.LibraryAutoGenList:
-                            Index = self.PlatformInfo.LibraryAutoGenList.index(M)
-                            FixedVoidTypePcds = self.PlatformInfo.LibraryAutoGenList[Index].FixedVoidTypePcds
-                        if item not in FixedVoidTypePcds:
-                            EdkLogger.error("build", FORMAT_INVALID, "{} used in [Depex] section should be used as FixedAtBuild type and VOID* datum type in the module.".format(item))
-                        else:
+                        try:
                             Value = FixedVoidTypePcds[item]
                             if len(Value.split(',')) != 16:
                                 EdkLogger.error("build", FORMAT_INVALID,
                                                 "{} used in [Depex] section should be used as FixedAtBuild type and VOID* datum type and 16 bytes in the module.".format(item))
                             NewList.append(Value)
+                        except:
+                            EdkLogger.error("build", FORMAT_INVALID, "{} used in [Depex] section should be used as FixedAtBuild type and VOID* datum type in the module.".format(item))
+
                 DepexList.extend(NewList)
                 if DepexList[-1] == 'END':  # no need of a END at this time
                     DepexList.pop()
                 DepexList.append(')')
                 Inherited = True
             if Inherited:
-                EdkLogger.verbose("DEPEX[%s] (+%s) = %s" % (self.Name, M.BaseName, DepexList))
+                EdkLogger.verbose("DEPEX[%s] (+%s) = %s" % (self.Name, M.Module.BaseName, DepexList))
             if 'BEFORE' in DepexList or 'AFTER' in DepexList:
                 break
             if len(DepexList) > 0:
@@ -1655,9 +1653,10 @@ class ModuleAutoGen(AutoGen):
 
             if os.path.exists (self.TimeStampPath):
                 os.remove (self.TimeStampPath)
-            with open(self.TimeStampPath, 'w+') as file:
+            with open(self.TimeStampPath, 'w+') as fd:
                 for f in FileSet:
-                    print(f, file=file)
+                    fd.write(f)
+                    fd.write("\n")
 
         # Ignore generating makefile when it is a binary module
         if self.IsBinaryModule:

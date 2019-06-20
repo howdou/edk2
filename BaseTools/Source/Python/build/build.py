@@ -50,7 +50,7 @@ from GenFds.GenFds import GenFds, GenFdsApi
 
 from collections import OrderedDict, defaultdict
 import multiprocessing as mp
-from AutoGen.AutoGenWorker import AutoGenWorker
+from AutoGen.AutoGenWorker import AutoGenWorkerInProcess
 
 # Version and Copyright
 VersionNumber = "0.60" + ' ' + gBUILD_VERSION
@@ -1189,10 +1189,10 @@ class Build():
             mqueue = mp.Queue()
             for m in AutoGenObject.GetAllModuleInfo:
                 mqueue.put(m)
-            begin = time.perf_counter()
+            begin = time.clock()
             AutoGenObject.DataPipe.DataContainer = {"FfsCommand":FfsCommand}
-            auto_workers = [AutoGenWorker(mqueue,AutoGenObject.DataPipe) for i in range(mp.cpu_count()//2)]
-            print ("Create Process: ", time.perf_counter() - begin)
+            auto_workers = [AutoGenWorkerInProcess(mqueue,AutoGenObject.DataPipe) for i in range(mp.cpu_count()//2)]
+            print ("Create Process: ", time.clock() - begin)
             for w in auto_workers:
                 w.start()
             for w in auto_workers:
@@ -2019,15 +2019,15 @@ class Build():
                     mqueue = mp.Queue()
                     for m in Pa.GetAllModuleInfo:
                         mqueue.put(m)
-                    begin = time.perf_counter()
+                    begin = time.clock()
                     Pa.DataPipe.DataContainer = {"FfsCommand":CmdListDict}
                     Pa.DataPipe.dump("GlobalVar_%s_%s.bin" % (Pa.Name,Pa.Arch))
                     with open("%s_files_%s.txt"  % (Pa.Name,Pa.Arch),'w') as fw:
                         for item in Pa.GetAllModuleInfo:
                             fw.write(",".join([str(i) for i in item]))
                             fw.write("\n")
-                    auto_workers = [AutoGenWorker(mqueue,Pa.DataPipe) for i in range(mp.cpu_count()//2)]
-                    print ("Create Process: ", time.perf_counter() - begin)
+                    auto_workers = [AutoGenWorkerInProcess(mqueue,Pa.DataPipe) for i in range(mp.cpu_count()//2)]
+                    print ("Create Process: ", time.clock() - begin)
                     for w in auto_workers:
                         w.start()
                     if PcdMa:

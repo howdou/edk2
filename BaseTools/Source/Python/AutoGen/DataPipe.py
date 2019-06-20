@@ -4,7 +4,7 @@
 # Copyright (c) 2019, Intel Corporation. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
-
+from __future__ import absolute_import
 from AutoGen.PlatformData import *
 from Workspace.WorkspaceDatabase import BuildDB
 from Workspace.WorkspaceCommon import GetModuleLibInstances
@@ -17,12 +17,12 @@ class DataPipe(object):
     def __init__(self, BuildDir=None):
         self.data_container = {}
         self.BuildDir = BuildDir
-    
+
 class MemoryDataPipe(DataPipe):
 
     def Get(self,key):
         return self.data_container.get(key)
-    
+
     def dump(self,file_path):
         with open(file_path,'wb') as fd:
             pickle.dump(self.data_container,fd,pickle.HIGHEST_PROTOCOL)
@@ -48,7 +48,7 @@ class MemoryDataPipe(DataPipe):
                  pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
             for pcd in PlatformInfo.Platform.Pcds.values()]
             }
-         
+
         #Platform Module Pcds
         ModulePcds = {}
         for m in PlatformInfo.Platform.Modules:
@@ -60,10 +60,10 @@ class MemoryDataPipe(DataPipe):
             pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
                  pcd.validlists,pcd.expressions,pcd.CustomAttribute,pcd.TokenValue) 
             for pcd in PlatformInfo.Platform.Modules[m].Pcds.values()]
-             
-         
+
+
         self.DataContainer = {"MOL_PCDS":ModulePcds}
-        
+
         #Module's Library Instance
         ModuleLibs = {}
         for m in PlatformInfo.Platform.Modules:
@@ -71,11 +71,11 @@ class MemoryDataPipe(DataPipe):
             Libs = GetModuleLibInstances(module_obj, PlatformInfo.Platform, BuildDB.BuildObject, PlatformInfo.Arch,PlatformInfo.BuildTarget,PlatformInfo.ToolChain)
             ModuleLibs[(m.File,m.Root,module_obj.Arch)] = [(l.MetaFile.File,l.MetaFile.Root,l.Arch) for l in Libs]
         self.DataContainer = {"DEPS":ModuleLibs}
-        
+
         #Platform BuildOptions
-        
+
         platform_build_opt =  PlatformInfo.EdkIIBuildOption
-        
+
         ToolDefinition = PlatformInfo.ToolDefinition
         module_build_opt = {}
         for m in PlatformInfo.Platform.Modules:
@@ -87,9 +87,9 @@ class MemoryDataPipe(DataPipe):
                               "TOOLDEF":ToolDefinition,
                               "MOL_BO":module_build_opt
                               }
-        
-        
-        
+
+
+
         #Platform Info
         PInfo = {
             "WorkspaceDir":PlatformInfo.Workspace.WorkspaceDir,
@@ -101,28 +101,28 @@ class MemoryDataPipe(DataPipe):
             "ActivePlatform":PlatformInfo.MetaFile
             }
         self.DataContainer = {'P_Info':PInfo}
-        
+
         self.DataContainer = {'M_Name':PlatformInfo.UniqueBaseName}
-        
+
         self.DataContainer = {"ToolChainFamily": PlatformInfo.ToolChainFamily}
-        
+
         self.DataContainer = {"BuildRuleFamily": PlatformInfo.BuildRuleFamily}
-        
+
         self.DataContainer = {"MixedPcd":GlobalData.MixedPcd}
-        
+
         self.DataContainer = {"BuildOptPcd":GlobalData.BuildOptionPcd}
-        
+
         self.DataContainer = {"BuildCommand": PlatformInfo.BuildCommand}
-        
+
         self.DataContainer = {"AsBuildModuleList": PlatformInfo._AsBuildModuleList}
-        
+
         self.DataContainer = {"G_defines": GlobalData.gGlobalDefines}
-        
+
         self.DataContainer = {"CL_defines": GlobalData.gCommandLineDefines}
-        
-        self.DataContainer = {"Env_Var": os.environ._data}
-        
+
+        self.DataContainer = {"Env_Var": {k:v for k, v in os.environ.items()}}
+
         self.DataContainer = {"PackageList": [(dec.MetaFile,dec.Arch) for dec in PlatformInfo.PackageList]}
-        
+
         self.DataContainer = {"GuidDict": PlatformInfo.Platform._GuidDict}
-        
+

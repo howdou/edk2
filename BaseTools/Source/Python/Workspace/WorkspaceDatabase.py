@@ -62,6 +62,8 @@ class WorkspaceDatabase(object):
         }
 
         _CACHE_ = {}    # (FilePath, Arch)  : <object>
+        def GetCache(self):
+            return self._CACHE_
 
         # constructor
         def __init__(self, WorkspaceDb):

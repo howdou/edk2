@@ -4,23 +4,25 @@
 # Copyright (c) 2019, Intel Corporation. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
+from __future__ import absolute_import
 import multiprocessing as mp
 from Common.Misc import PathClass
 from AutoGen.ModuleAutoGen import ModuleAutoGen
-from AutoGen.ModuleAutoGenHelper import WorkSpaceInfo
+from AutoGen.ModuleAutoGenHelper import WorkSpaceInfo,AutoGenInfo
 import Common.GlobalData as GlobalData
 import os,time
 import Common.EdkLogger as EdkLogger
 from Common.MultipleWorkspace import MultipleWorkspace as mws
 import threading
-
+from AutoGen.AutoGen import AutoGen
+from Workspace.WorkspaceDatabase import BuildDB
 class Worker():
     def __init__(self,module_queue,data_pipe):
         self.module_queue = module_queue
         self.data_pipe = data_pipe
     def test_run(self):
-        
-        begin = time.perf_counter()
+
+
         target = self.data_pipe.Get("P_Info").get("Target")
         toolchain = self.data_pipe.Get("P_Info").get("ToolChain")
         archlist = self.data_pipe.Get("P_Info").get("ArchList")
@@ -58,8 +60,7 @@ class Worker():
             Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
 
 #             print ("Processs ID: %d" % os.getpid(), module_file, time.perf_counter() - begin)
-        print ("Processs ID: %d Run %d modules " % (os.getpid(),module_count), time.perf_counter() - begin)
-    
+
 
 class AutoGenWorkerInThread(threading.Thread,Worker):
     def __init__(self,module_queue,data_pipe):
@@ -87,6 +88,32 @@ class AutoGenWorkerInProcess(mp.Process,Worker):
         Worker.__init__(self,module_queue,data_pipe)
         self.module_queue = module_queue
         self.data_pipe = data_pipe
+
+    def printStatus(self):
+        print("Processs ID: %d Run %d modules in AutoGen " % (os.getpid(),len(AutoGen.GetCache())))
+        print("Processs ID: %d Run %d modules in AutoGenInfo " % (os.getpid(),len(AutoGenInfo.GetCache())))
+        groupobj = {}
+        for buildobj in BuildDB.BuildObject.GetCache().values():
+            if str(buildobj).lower().endswith("dec"):
+                try:
+                    groupobj['dec'].append(str(buildobj))
+                except:
+                    groupobj['dec'] = [str(buildobj)]
+            if str(buildobj).lower().endswith("dsc"):
+                try:
+                    groupobj['dsc'].append(str(buildobj))
+                except:
+                    groupobj['dsc'] = [str(buildobj)]
+
+            if str(buildobj).lower().endswith("inf"):
+                try:
+                    groupobj['inf'].append(str(buildobj))
+                except:
+                    groupobj['inf'] = [str(buildobj)]
+
+        print("Processs ID: %d Run %d pkg in WDB " % (os.getpid(),len(groupobj.get("dec",[]))))
+        print("Processs ID: %d Run %d pla in WDB " % (os.getpid(),len(groupobj.get("dsc",[]))))
+        print("Processs ID: %d Run %d inf in WDB " % (os.getpid(),len(groupobj.get("inf",[]))))
     
     def run(self):
 #         import cProfile,pstats
@@ -96,6 +123,7 @@ class AutoGenWorkerInProcess(mp.Process,Worker):
         EdkLogger.Initialize()
         EdkLogger.SetLevel(EdkLogger.QUIET)
         self.test_run()
+        self.printStatus()
 #         print (time.perf_counter() - begin)
 #         pr.disable()
 #         sortby = 'tottime'

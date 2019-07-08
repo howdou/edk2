@@ -17,6 +17,7 @@ import re
 import os.path as path
 import copy
 import uuid
+import json
 
 from . import GenC
 from . import GenMake
@@ -655,10 +656,11 @@ class WorkspaceAutoGen(AutoGen):
             #
             # Generate Package level hash value
             #
-            GlobalData.gPackageHash = {}
+            GlobalData.gPackageHash[Arch] = {}
+            GlobalData.gPackageHashChain[Arch] = {}
             if GlobalData.gUseHashCache:
                 for Pkg in Pkgs:
-                    self._GenPkgLevelHash(Pkg)
+                    self._GenPkgLevelHash(Pkg, Arch)
 
         #
         # Check PCDs token value conflict in each DEC file.
@@ -717,16 +719,20 @@ class WorkspaceAutoGen(AutoGen):
 
         if GlobalData.gUseHashCache:
             m = hashlib.md5()
-            for files in AllWorkSpaceMetaFiles:
+            GlobalData.gPlatformHashChain = []
+            for files in sorted(list(AllWorkSpaceMetaFiles), key=lambda x: str(x)):
                 if files.endswith('.dec'):
                     continue
                 f = open(files, 'rb')
                 Content = f.read()
                 f.close()
                 m.update(Content)
+                t = (files, hashlib.md5(Content).hexdigest())
+                if t not in set(GlobalData.gPlatformHashChain):
+                    GlobalData.gPlatformHashChain.append(t)
             SaveFileOnChange(os.path.join(self.BuildDir, 'AutoGen.hash'), m.hexdigest(), False)
             GlobalData.gPlatformHash = m.hexdigest()
-
+            GlobalData.gPlatformHashChain[-1] =('FinalHash_WorkSpaceMetaFiles', m.hexdigest())
         #
         # Write metafile list to build directory
         #
@@ -740,8 +746,8 @@ class WorkspaceAutoGen(AutoGen):
                 print(f, file=file)
         return True
 
-    def _GenPkgLevelHash(self, Pkg):
-        if Pkg.PackageName in GlobalData.gPackageHash:
+    def _GenPkgLevelHash(self, Pkg, Arch):
+        if Pkg.PackageName in GlobalData.gPackageHash[Arch]:
             return
 
         PkgDir = os.path.join(self.BuildDir, Pkg.Arch, Pkg.PackageName)
@@ -753,18 +759,26 @@ class WorkspaceAutoGen(AutoGen):
         Content = f.read()
         f.close()
         m.update(Content)
+        GlobalData.gPackageHashChain[Arch][Pkg.PackageName] = []
+        GlobalData.gPackageHashChain[Arch][Pkg.PackageName].append((Pkg.MetaFile.Path, hashlib.md5(Content).hexdigest()))
         # Get include files hash value
         if Pkg.Includes:
             for inc in sorted(Pkg.Includes, key=lambda x: str(x)):
                 for Root, Dirs, Files in os.walk(str(inc)):
-                    for File in sorted(Files):
+                    for File in sorted(Files, key=lambda x: str(x)):
+                        if not File.lower().endswith(('.h', '.inc', '.in')):
+                            continue
                         File_Path = os.path.join(Root, File)
                         f = open(File_Path, 'rb')
                         Content = f.read()
                         f.close()
                         m.update(Content)
+                        t = (File_Path, hashlib.md5(Content).hexdigest())
+                        if t not in set(GlobalData.gPackageHashChain[Arch][Pkg.PackageName]):
+                            GlobalData.gPackageHashChain[Arch][Pkg.PackageName].append(t)
         SaveFileOnChange(HashFile, m.hexdigest(), False)
-        GlobalData.gPackageHash[Pkg.PackageName] = m.hexdigest()
+        GlobalData.gPackageHash[Arch][Pkg.PackageName] = m.hexdigest()
+        GlobalData.gPackageHashChain[Arch][Pkg.PackageName][-1] = ('FinalHash_Package_' + Pkg.PackageName, m.hexdigest())
 
     def _GetMetaFiles(self, Target, Toolchain, Arch):
         AllWorkSpaceMetaFiles = set()
@@ -1075,6 +1089,51 @@ class WorkspaceAutoGen(AutoGen):
     def CreateAsBuiltInf(self):
         return
 
+    def ClearCurrentHashChainDict(self):
+        del GlobalData.gPlatformHashChain[:]
+        GlobalData.gPackageHashChain.clear()
+        GlobalData.gModuleHashChain.clear()
+        return True
+
+    def SaveWorkSpaceAllHashChainToCache(self):
+        if not GlobalData.gCacheDest:
+            return False
+
+        if not GlobalData.gModuleHashChain:
+            EdkLogger.quiet("gModuleHashChain is empty: %s" % self)
+            return False
+
+        # save the hash chain list as cache file
+        CacheDestDir = path.join(GlobalData.gCacheDest, self.OutputDir, self.BuildTarget + "_" + self.ToolChain)
+        HashChainFile = path.join(CacheDestDir, self.MetaFile.BaseName + ".alldependencyfiles")
+        # Simply check whether the file has already existed
+        if os.path.exists(HashChainFile):
+            EdkLogger.quiet("override hashchain file in cache: %s" % HashChainFile)
+
+        #
+        WorkSpaceAllHashChain = []
+        for Module in sorted(GlobalData.gModuleHashChain.keys(), key=lambda x: str(x)):
+            New = list(set(GlobalData.gModuleHashChain[Module]) - set(WorkSpaceAllHashChain))
+            New = [(file, hash) for (file, hash) in New if not file.startswith('FinalHash_')]
+            New.sort(key=lambda x: str(x))
+            WorkSpaceAllHashChain += New
+
+        WorkSpaceAllHashChain.insert(0, "files number: " + str(len(WorkSpaceAllHashChain)))
+        WorkSpaceAllHashChain.insert(0, "modules number: " + str(len(GlobalData.gModuleHashChain)))
+
+        # save the HashChainDict as json file
+        CreateDirectory (CacheDestDir)
+        try:
+            with open(HashChainFile, 'w') as f:
+                json.dump(WorkSpaceAllHashChain, f, indent=2)
+                f.close()
+        except:
+            EdkLogger.quiet("fail to save hashchain file in cache: %s" % HashChainFile)
+            del WorkSpaceAllHashChain[:]
+            return False
+
+        del WorkSpaceAllHashChain[:]
+        return True
 
 ## AutoGen class for platform
 #
@@ -2503,6 +2562,12 @@ class PlatformAutoGen(AutoGen):
 
         return BuildOptions, BuildRuleOrder
 
+    def ClearCurrentHashChainDict(self):
+        for Ma in list(GlobalData.gModuleHashChain):
+            if Ma.Arch == self.Arch:
+                del GlobalData.gModuleHashChain[Ma][:]
+                del GlobalData.gModuleHashChain[Ma]
+        return True
 #
 # extend lists contained in a dictionary with lists stored in another dictionary
 # if CopyToDict is not derived from DefaultDict(list) then this may raise exception
@@ -2589,6 +2654,7 @@ class ModuleAutoGen(AutoGen):
         self.AutoGenDepSet = set()
         self.ReferenceModules = []
         self.ConstPcd                  = {}
+        self.Makefile                 = None
 
     ## hash() operator of ModuleAutoGen
     #
@@ -3030,7 +3096,7 @@ class ModuleAutoGen(AutoGen):
                 IncPathList = [NormPath(Path, self.Macros) for Path in BuildOptIncludeRegEx.findall(FlagOption)]
             else:
                 #
-                # RVCT may specify a list of directory separated by commas
+                # RVCT may specify a list of directory seperated by commas
                 #
                 IncPathList = []
                 for Path in BuildOptIncludeRegEx.findall(FlagOption):
@@ -3930,11 +3996,15 @@ class ModuleAutoGen(AutoGen):
         self.IsAsBuiltInfCreated = True
 
     def CopyModuleToCache(self):
-        FileDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
-        CreateDirectory (FileDir)
+        # Generate module hash file
         HashFile = path.join(self.BuildDir, self.Name + '.hash')
+        SaveFileOnChange(HashFile, self.GenModuleHash(), True)
+
+        FileDir = path.join(GlobalData.gCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        CreateDirectory (FileDir)
         if os.path.exists(HashFile):
             CopyFileOnChange(HashFile, FileDir)
+
         ModuleFile = path.join(self.OutputDir, self.Name + '.inf')
         if os.path.exists(ModuleFile):
             CopyFileOnChange(ModuleFile, FileDir)
@@ -3954,23 +4024,18 @@ class ModuleAutoGen(AutoGen):
                 CreateDirectory(destination_dir)
                 CopyFileOnChange(File, destination_dir)
 
+        self.SaveHashChainFileToCache()
+
     def AttemptModuleCacheCopy(self):
-        # If library or Module is binary do not skip by hash
-        if self.IsBinaryModule:
-            return False
-        # .inc is contains binary information so do not skip by hash as well
-        for f_ext in self.SourceFileList:
-            if '.inc' in str(f_ext):
-                return False
-        FileDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        FileDir = path.join(GlobalData.gCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
         HashFile = path.join(FileDir, self.Name + '.hash')
         if os.path.exists(HashFile):
             f = open(HashFile, 'r')
             CacheHash = f.read()
             f.close()
             self.GenModuleHash()
-            if GlobalData.gModuleHash[self.Arch][self.Name]:
-                if CacheHash == GlobalData.gModuleHash[self.Arch][self.Name]:
+            if GlobalData.gModuleHash[self]:
+                if CacheHash == GlobalData.gModuleHash[self]:
                     for root, dir, files in os.walk(FileDir):
                         for f in files:
                             if self.Name + '.hash' in f:
@@ -3994,7 +4059,7 @@ class ModuleAutoGen(AutoGen):
     #
     @cached_class_function
     def CreateMakeFile(self, CreateLibraryMakeFile=True, GenFfsList = []):
-        # nest this function inside its only caller.
+        # nest this function inside it's only caller.
         def CreateTimeStamp():
             FileSet = {self.MetaFile.Path}
 
@@ -4023,8 +4088,8 @@ class ModuleAutoGen(AutoGen):
                 LibraryAutoGen.CreateMakeFile()
 
         # Don't enable if hash feature enabled, CanSkip uses timestamps to determine build skipping
-        if not GlobalData.gUseHashCache and self.CanSkip():
-            return
+        # if not GlobalData.gUseHashCache and self.CanSkip():
+            # return
 
         if len(self.CustomMakefile) == 0:
             Makefile = GenMake.ModuleMakefile(self)
@@ -4037,6 +4102,7 @@ class ModuleAutoGen(AutoGen):
             EdkLogger.debug(EdkLogger.DEBUG_9, "Skipped the generation of makefile for module %s [%s]" %
                             (self.Name, self.Arch))
 
+        self.Makefile = Makefile
         CreateTimeStamp()
 
     def CopyBinaryFiles(self):
@@ -4067,8 +4133,8 @@ class ModuleAutoGen(AutoGen):
                 LibraryAutoGen.CreateCodeFile()
 
         # Don't enable if hash feature enabled, CanSkip uses timestamps to determine build skipping
-        if not GlobalData.gUseHashCache and self.CanSkip():
-            return
+        # if not GlobalData.gUseHashCache and self.CanSkip():
+            # return
 
         AutoGenList = []
         IgoredAutoGenList = []
@@ -4129,60 +4195,68 @@ class ModuleAutoGen(AutoGen):
         return RetVal
 
     def GenModuleHash(self):
-        # Initialize a dictionary for each arch type
-        if self.Arch not in GlobalData.gModuleHash:
-            GlobalData.gModuleHash[self.Arch] = {}
-
         # Early exit if module or library has been hashed and is in memory
-        if self.Name in GlobalData.gModuleHash[self.Arch]:
-            return GlobalData.gModuleHash[self.Arch][self.Name].encode('utf-8')
+        if self in GlobalData.gModuleHash:
+            return GlobalData.gModuleHash[self].encode('utf-8')
 
         # Initialze hash object
         m = hashlib.md5()
+        GlobalData.gModuleHashChain[self] = []
 
-        # Add Platform level hash
-        m.update(GlobalData.gPlatformHash.encode('utf-8'))
-
-        # Add Package level hash
-        if self.DependentPackageList:
-            for Pkg in sorted(self.DependentPackageList, key=lambda x: x.PackageName):
-                if Pkg.PackageName in GlobalData.gPackageHash:
-                    m.update(GlobalData.gPackageHash[Pkg.PackageName].encode('utf-8'))
-
-        # Add Library hash
-        if self.LibraryAutoGenList:
-            for Lib in sorted(self.LibraryAutoGenList, key=lambda x: x.Name):
-                if Lib.Name not in GlobalData.gModuleHash[self.Arch]:
-                    Lib.GenModuleHash()
-                m.update(GlobalData.gModuleHash[self.Arch][Lib.Name].encode('utf-8'))
-
-        # Add Module self
-        f = open(str(self.MetaFile), 'rb')
-        Content = f.read()
-        f.close()
-        m.update(Content)
-
+        DependencyFileSet = set()
+        # Add Makefile
+        if self.Makefile is not None:
+            MakefileType = self.Makefile._FileType
+            MakefileName = self.Makefile._FILE_NAME_[MakefileType]
+            MakefilePath = os.path.join(self.MakeFileDir, MakefileName)
+            DependencyFileSet.add(MakefilePath)
+            # Add header files
+            if self.Makefile.DependencyHeaderFileSet:
+                for File in self.Makefile.DependencyHeaderFileSet:
+                    DependencyFileSet.add(File)
+        # Add AutoGen files
+        if self.AutoGenFileList:
+            for File in set(self.AutoGenFileList):
+                DependencyFileSet.add(File)
+        # Add Module Meta file
+        DependencyFileSet.add(self.MetaFile)
         # Add Module's source files
         if self.SourceFileList:
-            for File in sorted(self.SourceFileList, key=lambda x: str(x)):
-                f = open(str(File), 'rb')
-                Content = f.read()
-                f.close()
-                m.update(Content)
+            for File in set(self.SourceFileList):
+                DependencyFileSet.add(File)
 
-        GlobalData.gModuleHash[self.Arch][self.Name] = m.hexdigest()
+        # Add all Library dependency files
+        if self.LibraryAutoGenList:
+            for Lib in self.LibraryAutoGenList:
+                if Lib not in GlobalData.gModuleHash:
+                    Lib.GenModuleHash()
+                for (File, Hash) in GlobalData.gModuleHashChain[Lib]:
+                    DependencyFileSet.add(File)
+                #m.update(GlobalData.gModuleHash[Lib].encode('utf-8'))
 
-        return GlobalData.gModuleHash[self.Arch][self.Name].encode('utf-8')
+        # Caculate all above dependency files hash
+        for File in sorted(DependencyFileSet, key=lambda x: str(x)):
+            if str(File).startswith('FinalHash_'):
+                continue
+            if not os.path.exists(str(File)):
+                EdkLogger.quiet("header file: %s is missing for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
+                continue
+            f = open(str(File), 'rb')
+            Content = f.read()
+            f.close()
+            m.update(Content)
+            GlobalData.gModuleHashChain[self].append((str(File), hashlib.md5(Content).hexdigest()))
+
+        GlobalData.gModuleHash[self] = m.hexdigest()
+        GlobalData.gModuleHashChain[self].append(('FinalHash_Module_' + self.Name + '_' + self.Arch , m.hexdigest()))
+
+        return GlobalData.gModuleHash[self].encode('utf-8')
 
     ## Decide whether we can skip the ModuleAutoGen process
     def CanSkipbyHash(self):
         # Hashing feature is off
         if not GlobalData.gUseHashCache:
             return False
-
-        # Initialize a dictionary for each arch type
-        if self.Arch not in GlobalData.gBuildHashSkipTracking:
-            GlobalData.gBuildHashSkipTracking[self.Arch] = dict()
 
         # If library or Module is binary do not skip by hash
         if self.IsBinaryModule:
@@ -4194,7 +4268,7 @@ class ModuleAutoGen(AutoGen):
                 return False
 
         # Use Cache, if exists and if Module has a copy in cache
-        if GlobalData.gBinCacheSource and self.AttemptModuleCacheCopy():
+        if GlobalData.gCacheSource and self.AttemptModuleCacheCopy():
             return True
 
         # Early exit for libraries that haven't yet finished building
@@ -4203,12 +4277,177 @@ class ModuleAutoGen(AutoGen):
             return False
 
         # Return a Boolean based on if can skip by hash, either from memory or from IO.
-        if self.Name not in GlobalData.gBuildHashSkipTracking[self.Arch]:
+        if self not in GlobalData.gBuildHashSkipTracking:
             # If hashes are the same, SaveFileOnChange() will return False.
-            GlobalData.gBuildHashSkipTracking[self.Arch][self.Name] = not SaveFileOnChange(HashFile, self.GenModuleHash(), True)
-            return GlobalData.gBuildHashSkipTracking[self.Arch][self.Name]
+            GlobalData.gBuildHashSkipTracking[self] = not SaveFileOnChange(HashFile, self.GenModuleHash(), True)
+            return GlobalData.gBuildHashSkipTracking[self]
         else:
-            return GlobalData.gBuildHashSkipTracking[self.Arch][self.Name]
+            return GlobalData.gBuildHashSkipTracking[self]
+
+    ## Decide whether we can skip the Make process
+    def CanSkipbyMakeCache(self):
+        # AutoGen Hashing feature turns off the make cache
+        if GlobalData.gUseHashCache:
+            return False
+
+        if not GlobalData.gCacheSource:
+            return False
+
+        # If Module is binary, do not skip by cache
+        if self.IsBinaryModule:
+            return False
+                
+        if self in GlobalData.gMakeCacheHit:
+            return GlobalData.gMakeCacheHit[self]
+
+        # .inc is contains binary information so do not skip by hash as well
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                GlobalData.gMakeCacheHit[self] = False
+                return False
+
+        # Get the module hash values from stored cache and currrent build
+        # then check whether cache hit based on the hash values
+        # if cache hit, restore all the files from cache
+        FileDir = path.join(GlobalData.gCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        HashFile = path.join(FileDir, self.Name + '.hash')
+        if os.path.exists(HashFile):
+            f = open(HashFile, 'r')
+            CacheHash = f.read()
+            f.close()
+            self.GenModuleHash()
+            if GlobalData.gModuleHash[self]:
+                if CacheHash == GlobalData.gModuleHash[self]:
+                    for root, dir, files in os.walk(FileDir):
+                        for f in files:
+                            if self.Name + '.hash' in f:
+                                CopyFileOnChange(HashFile, self.BuildDir)
+                            else:
+                                File = path.join(root, f)
+                                sub_dir = os.path.relpath(File, FileDir)
+                                destination_file = os.path.join(self.OutputDir, sub_dir)
+                                destination_dir = os.path.dirname(destination_file)
+                                CreateDirectory(destination_dir)
+                                CopyFileOnChange(File, destination_dir)
+                    if self.Name == "PcdPeim" or self.Name == "PcdDxe":
+                        CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
+                    GlobalData.gMakeCacheHit[self] = True
+                    return True
+        else:
+            EdkLogger.quiet("Cannot cached hash file: %s" % HashFile)
+
+        GlobalData.gMakeCacheHit[self] = False
+        return False
+
+    def SaveHashChainFileToCache(self):
+        if not GlobalData.gCacheDest:
+            return False
+
+        self.GenModuleHash()
+        if self not in GlobalData.gModuleHashChain:
+            EdkLogger.quiet("no gModuleHashChain for module: %s[%s]" % (self.MetaFile.BaseName, self.Arch))
+            return False
+
+        # save the hash chain list as cache file
+        CacheDestDir = path.join(GlobalData.gCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        HashChainFile = path.join(CacheDestDir, self.Name + ".hashchain")
+        # Simply check whether the file has already existed
+        # Not check the HashChain file content because it could be big
+        if os.path.exists(HashChainFile):
+            EdkLogger.quiet("override hashchain file in cache: %s" % HashChainFile)
+            #try:
+            #with open(HashChainFile, "r") as f:
+            #    EdkLogger.quiet("to json.load: %s" % HashChainFile)
+            #    DictContent = json.load(f, object_pairs_hook=OrderedDict)
+            #    if DictContent == GlobalData.gModuleHashChain[self]:
+
+            #except:
+            #    EdkLogger.quiet("SaveHashChainFileToCache load error: %s" % HashChainFile)
+            #    return False
+
+        # save the HashChainDict as json file
+        CreateDirectory (CacheDestDir)
+        try:
+            with open(HashChainFile, 'w') as f:
+                json.dump(GlobalData.gModuleHashChain[self], f, indent=2)
+                f.close()
+        except:
+            EdkLogger.quiet("fail to save hashchain file in cache: %s" % HashChainFile)
+            return False
+
+        return True
+
+    def LoadHashChainFileFromCache(self):
+        if not GlobalData.gCacheSource:
+            return False
+
+        CacheSrcDir = path.join(GlobalData.gCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        HashChainFile = path.join(CacheSrcDir, self.Name + ".hashchain")
+        try:
+            with open(HashChainFile, 'r') as f:
+                GlobalData.gModuleHashChainCached[self] = json.load(f)
+                f.close()
+        except:
+            EdkLogger.quiet("fail to load hashchian file from cache: %s" % HashChainFile)
+            return False
+
+        return True
+
+    ## Show the first file name which causes cache miss
+    def PrintFirstCacheMissFile(self):
+        if not GlobalData.gCacheSource:
+            return False
+
+        if self not in GlobalData.gModuleHashChainCached:
+            self.LoadHashChainFileFromCache()
+            if self not in GlobalData.gModuleHashChainCached:
+                return False
+
+        self.GenModuleHash()
+        if self not in GlobalData.gModuleHashChain:
+            EdkLogger.quiet("no gModuleHashChain for module: %s " % self)
+            return False
+
+        for idx, (file, hash) in enumerate(GlobalData.gModuleHashChain[self]):
+            if file.startswith('FinalHash_'):
+                continue
+            (filecached, hashcached) = GlobalData.gModuleHashChainCached[self][idx]
+            if file != filecached:
+                EdkLogger.quiet("first different file: %s" % file)
+                EdkLogger.quiet("the file in cache: %s" % filecached)
+                break
+            if hash != hashcached:
+                EdkLogger.quiet("first cache miss file: %s" % file)
+                EdkLogger.quiet("the hash in cache = %s, but current hash = %s" % (hashcached, hash))
+                break
+
+        del GlobalData.gModuleHashChainCached[self][:]
+        return True
+
+        #verbose info
+        # FileList = list(GlobalData.gModuleHashChain[self].keys())
+        # CachedFileList = list(GlobalData.gModuleHashChainCached[self].keys())
+        # for file in GlobalData.gModuleHashChain[self]:
+            # if GlobalData.gModuleHashChain[self][file] != GlobalData.gModuleHashChainCached[self][file]:
+                # EdkLogger.quiet("first cache miss file: %s" % file)
+                # break
+            # if FileList.index(file) != CachedFileList.index(file):
+                # EdkLogger.quiet("first order miss file: %s" % file)
+                # break
+
+        # CurrentFileList = list(GlobalData.gModuleHashChain[self].keys())
+        # CachedFileList = list(GlobalData.gModuleHashChainCached[self].keys())
+        # AddedFileList = list(set(CurrentFileList) - set(CachedFileList))
+        # RemovedFileList = list(set(CachedFileList) - set(CurrentFileList))
+        # if AddedFileList:
+            # EdkLogger.quiet("first added file: %s" % AddedFileList[0])
+
+        # if RemovedFileList:
+            # EdkLogger.quiet("first removed file: %s" % RemovedFileList[0])
+
+    def ClearCurrentHashChainDict(self):
+        del GlobalData.gModuleHashChain[self][:]
+        return True
 
     ## Decide whether we can skip the ModuleAutoGen process
     #  If any source file is newer than the module than we cannot skip

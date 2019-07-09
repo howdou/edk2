@@ -17,11 +17,11 @@ import threading
 from AutoGen.AutoGen import AutoGen
 from Workspace.WorkspaceDatabase import BuildDB
 class Worker():
-    def __init__(self,module_queue,data_pipe):
+    def __init__(self,module_queue,data_pipe,share_data):
         self.module_queue = module_queue
         self.data_pipe = data_pipe
+        self.share_data = share_data
     def test_run(self):
-
 
         target = self.data_pipe.Get("P_Info").get("Target")
         toolchain = self.data_pipe.Get("P_Info").get("ToolChain")
@@ -39,6 +39,7 @@ class Worker():
         os.environ._data = self.data_pipe.Get("Env_Var")
         GlobalData.gWorkspace = workspacedir
         GlobalData.gDisableIncludePathCheck = False
+        GlobalData.gFdfParser = self.data_pipe.Get("FdfParser")
         module_count = 0
         FfsCmd = self.data_pipe.Get("FfsCommand")
         if FfsCmd is None:
@@ -83,11 +84,12 @@ class AutoGenWorkerInThread(threading.Thread,Worker):
 #             ps.print_stats(50)
 
 class AutoGenWorkerInProcess(mp.Process,Worker):
-    def __init__(self,module_queue,data_pipe):
+    def __init__(self,module_queue,data_pipe,share_data):
         mp.Process.__init__(self)
-        Worker.__init__(self,module_queue,data_pipe)
+        Worker.__init__(self,module_queue,data_pipe,share_data)
         self.module_queue = module_queue
         self.data_pipe = data_pipe
+        self.share_data = share_data
 
     def printStatus(self):
         print("Processs ID: %d Run %d modules in AutoGen " % (os.getpid(),len(AutoGen.GetCache())))

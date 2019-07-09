@@ -50,6 +50,7 @@ from GenFds.GenFds import GenFds, GenFdsApi
 
 from collections import OrderedDict, defaultdict
 import multiprocessing as mp
+from multiprocessing import Manager
 from AutoGen.AutoGenWorker import AutoGenWorkerInProcess
 
 # Version and Copyright
@@ -817,6 +818,7 @@ class Build():
 
         EdkLogger.info("")
         os.chdir(self.WorkspaceDir)
+        self.share_data = Manager().dict()
 
     ## Load configuration
     #
@@ -1968,7 +1970,7 @@ class Build():
                 self.AutoGenTime += int(round((time.time() - WorkspaceAutoGenTime)))
                 for Arch in Wa.ArchList:
                     BuildModules = []
-                    PcdMa = None
+                    PcdMaList    = []
                     AutoGenStart = time.time()
                     GlobalData.gGlobalDefines['ARCH'] = Arch
                     Pa = PlatformAutoGen(Wa, self.PlatformFile, BuildTarget, ToolChain, Arch)
@@ -1991,7 +1993,7 @@ class Build():
                             continue
                         if Ma.PcdIsDriver:
                             Ma.PlatformInfo = Pa
-                            PcdMa = Ma
+                            PcdMaList.append(Ma)
                         if Ma.CanSkipbyHash():
                             self.HashSkipModules.append(Ma)
                             continue
@@ -2026,16 +2028,17 @@ class Build():
                         for item in Pa.GetAllModuleInfo:
                             fw.write(",".join([str(i) for i in item]))
                             fw.write("\n")
-                    auto_workers = [AutoGenWorkerInProcess(mqueue,Pa.DataPipe) for i in range(mp.cpu_count()//2)]
+                    auto_workers = [AutoGenWorkerInProcess(mqueue,Pa.DataPipe,self.share_data) for i in range(mp.cpu_count()//2)]
                     print ("Create Process: ", time.clock() - begin)
                     for w in auto_workers:
                         w.start()
-                    if PcdMa:
+                    for PcdMa in PcdMaList:
                         PcdMa.CreateCodeFile(True)
                         PcdMa.CreateMakeFile(GenFfsList = CmdListDict.get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                         PcdMa.CreateAsBuiltInf()
                     for w in auto_workers:
                         w.join()
+                    print(self.share_data.keys())
                     self.Progress.Stop("done!")
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                     MakeStart = time.time()

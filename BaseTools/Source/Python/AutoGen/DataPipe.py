@@ -125,4 +125,6 @@ class MemoryDataPipe(DataPipe):
         self.DataContainer = {"PackageList": [(dec.MetaFile,dec.Arch) for dec in PlatformInfo.PackageList]}
 
         self.DataContainer = {"GuidDict": PlatformInfo.Platform._GuidDict}
+        
+        self.DataContainer = {"FdfParser": True if GlobalData.gFdfParser else False}
 

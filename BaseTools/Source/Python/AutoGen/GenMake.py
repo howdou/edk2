@@ -564,6 +564,7 @@ cleanlib:
         # Generate macros used to represent input files
         FileMacroList = [] # macro name = file list
         for FileListMacro in self.FileListMacros:
+            self.FileListMacros[FileListMacro].sort()
             FileMacro = self._FILE_MACRO_TEMPLATE.Replace(
                                                     {
                                                         "macro_name"  : FileListMacro,

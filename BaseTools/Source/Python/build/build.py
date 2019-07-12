@@ -2047,27 +2047,6 @@ class Build():
                             Ma.PlatformInfo = Pa
                             PcdMaList.append(Ma)
                             continue
-                        # if Ma.CanSkipbyHash():
-                            # self.HashSkipModules.append(Ma)
-                            # continue
-
-#                         # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
-#                         if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
-#                             # for target which must generate AutoGen code and makefile
-#                             if not self.SkipAutoGen or self.Target == 'genc':
-#                                 Ma.CreateCodeFile(True)
-#                             if self.Target == "genc":
-#                                 continue
-# 
-#                             if not self.SkipAutoGen or self.Target == 'genmake':
-#                                 if CmdListDict and self.Fdf and (Module.File, Arch) in CmdListDict:
-#                                     Ma.CreateMakeFile(True, CmdListDict[Module.File, Arch])
-#                                     del CmdListDict[Module.File, Arch]
-#                                 else:
-#                                     Ma.CreateMakeFile(True)
-#                             if self.Target == "genmake":
-#                                 continue
-                        #BuildModules.append(Ma)
                         # Initialize all modules in tracking to False (FAIL)
                         if Ma not in GlobalData.gModuleBuildTracking:
                             GlobalData.gModuleBuildTracking[Ma] = False
@@ -2090,6 +2069,7 @@ class Build():
                         PcdMa.CreateCodeFile(True)
                         PcdMa.CreateMakeFile(GenFfsList = CmdListDict.get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                         PcdMa.CreateAsBuiltInf()
+                        PcdMa.GenLibHashChainInChildProcess(self.share_data)
                     for w in auto_workers:
                         w.join()
 

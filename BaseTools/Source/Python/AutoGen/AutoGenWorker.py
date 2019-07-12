@@ -59,6 +59,11 @@ class Worker():
             Ma.IsLibrary = IsLib
             Ma.CreateCodeFile()
             Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
+            #print(str(Ma))
+            #EdkLogger.quiet("EdkLogger.quiet: %s" % str(Ma))
+            Ma.GenLibHashChainInChildProcess(self.share_data)
+            #self.share_data[(Ma.MetaFile.Path, Ma.Arch)]= str(Ma)
+
 
 #             print ("Processs ID: %d" % os.getpid(), module_file, time.perf_counter() - begin)
 

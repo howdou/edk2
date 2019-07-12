@@ -1863,6 +1863,67 @@ class ModuleAutoGen(AutoGen):
 
         return GlobalData.gModuleHash[self].encode('utf-8')
 
+    def GenLibHashChainInChildProcess(self, gDict):
+        # Early exit if module or library has been hashed and is in memory
+        if (self.MetaFile.Path, self.Arch) in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch)]
+
+        DependencyFileSet = set()
+        # Add Makefile
+        if self.Makefile is not None:
+            MakefileType = self.Makefile._FileType
+            MakefileName = self.Makefile._FILE_NAME_[MakefileType]
+            MakefilePath = os.path.join(self.MakeFileDir, MakefileName)
+            EdkLogger.quiet("MakefilePath: %s" % MakefilePath)
+            DependencyFileSet.add(MakefilePath)
+            # Add header files
+            if self.Makefile.DependencyHeaderFileSet:
+                for File in self.Makefile.DependencyHeaderFileSet:
+                    DependencyFileSet.add(File)
+            else:
+                EdkLogger.quiet("header files is empty for module: %s[%s]" % (self.MetaFile.BaseName, self.Arch))
+        else:
+            EdkLogger.quiet("makefile is missing for module: %s[%s]" % (self.MetaFile.BaseName, self.Arch))
+        # Add AutoGen files
+        if self.AutoGenFileList:
+            for File in set(self.AutoGenFileList):
+                DependencyFileSet.add(File)
+        # Add Module Meta file
+        DependencyFileSet.add(self.MetaFile)
+        # Add Module's source files
+        if self.SourceFileList:
+            for File in set(self.SourceFileList):
+                DependencyFileSet.add(File)
+
+        # Add all Library dependency files
+        # if self.LibraryAutoGenList:
+            # for Lib in self.LibraryAutoGenList:
+                # if (Lib.MetaFile.Path, Lib.Arch) not in gDict:
+                    # Lib.GenModuleHashChainInChildProcess(gDict)
+                # for (File, Hash) in gDict[(Lib.MetaFile.Path, Lib.Arch)]:
+                    # DependencyFileSet.add(File)
+
+        # Caculate all above dependency files hash
+        # Initialze hash object
+        FileList = []
+        m = hashlib.md5()
+        for File in sorted(DependencyFileSet, key=lambda x: str(x)):
+            if str(File).startswith('FinalHash_'):
+                continue
+            if not os.path.exists(str(File)):
+                EdkLogger.quiet("header file: %s is missing for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
+                continue
+            f = open(str(File), 'rb')
+            Content = f.read()
+            f.close()
+            m.update(Content)
+            FileList.append((str(File), hashlib.md5(Content).hexdigest()))
+
+        FileList.append(('FinalHash_Lib_' + self.Name + '_' + self.Arch , m.hexdigest()))
+        if (self.MetaFile.Path, self.Arch) not in gDict:
+            gDict[(self.MetaFile.Path, self.Arch)] = []
+            gDict[(self.MetaFile.Path, self.Arch)].extend(FileList)
+
     ## Decide whether we can skip the ModuleAutoGen process
     def CanSkipbyHash(self):
         # Hashing feature is off

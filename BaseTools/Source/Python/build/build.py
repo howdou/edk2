@@ -597,7 +597,7 @@ class BuildTask:
     #
     def AddDependency(self, Dependency):
         for Dep in Dependency:
-            if not Dep.BuildObject.IsBinaryModule and not Dep.BuildObject.CanSkipbyHash():
+            if not Dep.BuildObject.IsBinaryModule and not Dep.BuildObject.CanSkipbyMakeCache():
                 self.DependencyList.append(BuildTask.New(Dep))    # BuildTask list
 
     ## The thread wrapper of LaunchCommand function
@@ -723,6 +723,8 @@ class Build():
         GlobalData.gUseHashCache = BuildOptions.UseHashCache
         GlobalData.gBinCacheDest   = BuildOptions.BinCacheDest
         GlobalData.gBinCacheSource = BuildOptions.BinCacheSource
+        GlobalData.gCacheDest   = BuildOptions.CacheDest
+        GlobalData.gCacheSource = BuildOptions.CacheSource
         GlobalData.gEnableGenfdsMultiThread = BuildOptions.GenfdsMultiThread
         GlobalData.gDisableIncludePathCheck = BuildOptions.DisableIncludePathCheck
 
@@ -734,6 +736,15 @@ class Build():
 
         if GlobalData.gBinCacheDest and GlobalData.gBinCacheSource:
             EdkLogger.error("build", OPTION_NOT_SUPPORTED, ExtraData="--binary-destination can not be used together with --binary-source.")
+
+        if GlobalData.gCacheDest and GlobalData.gUseHashCache:
+            EdkLogger.error("build", OPTION_NOT_SUPPORTED, ExtraData="--cache-dest can not be used together with --hash.")
+
+        if GlobalData.gCacheSource and GlobalData.gUseHashCache:
+            EdkLogger.error("build", OPTION_NOT_SUPPORTED, ExtraData="--cache-source can not be used together with --hash.")
+
+        if GlobalData.gCacheDest and GlobalData.gCacheSource:
+            EdkLogger.error("build", OPTION_NOT_SUPPORTED, ExtraData="--cache-dest can not be used together with --cache-source.")
 
         if GlobalData.gBinCacheSource:
             BinCacheSource = os.path.normpath(GlobalData.gBinCacheSource)
@@ -752,6 +763,24 @@ class Build():
         else:
             if GlobalData.gBinCacheDest is not None:
                 EdkLogger.error("build", OPTION_VALUE_INVALID, ExtraData="Invalid value of option --binary-destination.")
+
+        if GlobalData.gCacheSource:
+            CacheSource = os.path.normpath(GlobalData.gCacheSource)
+            if not os.path.isabs(CacheSource):
+                CacheSource = mws.join(self.WorkspaceDir, CacheSource)
+            GlobalData.gCacheSource = CacheSource
+        else:
+            if GlobalData.gCacheSource is not None:
+                EdkLogger.error("build", OPTION_VALUE_INVALID, ExtraData="Invalid value of option --cache-source.")
+
+        if GlobalData.gCacheDest:
+            CacheDest = os.path.normpath(GlobalData.gCacheDest)
+            if not os.path.isabs(CacheDest):
+                CacheDest = mws.join(self.WorkspaceDir, CacheDest)
+            GlobalData.gCacheDest = CacheDest
+        else:
+            if GlobalData.gCacheDest is not None:
+                EdkLogger.error("build", OPTION_VALUE_INVALID, ExtraData="Invalid value of option --cache-dest.")
 
         if self.ConfDirectory:
             # Get alternate Conf location, if it is absolute, then just use the absolute directory name
@@ -1241,6 +1270,9 @@ class Build():
             BuildCommand = BuildCommand + [Target]
             LaunchCommand(BuildCommand, AutoGenObject.MakeFileDir)
             self.CreateAsBuiltInf()
+            if GlobalData.gCacheDest:
+                self.UpdateBuildCache()
+            self.BuildModules = []
             return True
 
         # build library
@@ -1259,6 +1291,9 @@ class Build():
                 NewBuildCommand = BuildCommand + ['-f', os.path.normpath(os.path.join(Mod, makefile)), 'pbuild']
                 LaunchCommand(NewBuildCommand, AutoGenObject.MakeFileDir)
             self.CreateAsBuiltInf()
+            if GlobalData.gCacheDest:
+                self.UpdateBuildCache()
+            self.BuildModules = []
             return True
 
         # cleanlib
@@ -1352,6 +1387,9 @@ class Build():
                 BuildCommand = BuildCommand + [Target]
             AutoGenObject.BuildTime = LaunchCommand(BuildCommand, AutoGenObject.MakeFileDir)
             self.CreateAsBuiltInf()
+            if GlobalData.gCacheDest:
+                self.UpdateBuildCache()
+            self.BuildModules = []
             return True
 
         # genfds
@@ -1804,9 +1842,7 @@ class Build():
                             if Ma is None:
                                 continue
                             MaList.append(Ma)
-                            if Ma.CanSkipbyHash():
-                                self.HashSkipModules.append(Ma)
-                                continue
+
                             # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
                             if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
                                 # for target which must generate AutoGen code and makefile
@@ -1826,6 +1862,16 @@ class Build():
                                     self.Progress.Stop("done!")
                                 if self.Target == "genmake":
                                     return True
+
+                            if GlobalData.gCacheSource:
+                                if Ma.CanSkipbyMakeCache():
+                                    self.HashSkipModules.append(Ma)
+                                    EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                                    continue
+                                else:
+                                    EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                                    Ma.PrintFirstCacheMissFile()
+
                             self.BuildModules.append(Ma)
                             # Initialize all modules in tracking to False (FAIL)
                             if Ma not in GlobalData.gModuleBuildTracking:
@@ -1858,6 +1904,9 @@ class Build():
                 ExitFlag.set()
                 BuildTask.WaitForComplete()
                 self.CreateAsBuiltInf()
+                if GlobalData.gCacheDest:
+                    self.UpdateBuildCache()
+                self.BuildModules = []
                 self.MakeTime += int(round((time.time() - MakeContiue)))
                 if BuildTask.HasError():
                     self.invalidateHash()
@@ -1968,8 +2017,8 @@ class Build():
                 ExitFlag = threading.Event()
                 ExitFlag.clear()
                 self.AutoGenTime += int(round((time.time() - WorkspaceAutoGenTime)))
+                self.BuildModules = []
                 for Arch in Wa.ArchList:
-                    BuildModules = []
                     PcdMaList    = []
                     AutoGenStart = time.time()
                     GlobalData.gGlobalDefines['ARCH'] = Arch
@@ -1986,17 +2035,21 @@ class Build():
                             if Inf in Pa.Platform.Modules:
                                 continue
                             ModuleList.append(Inf)
+                    MaNotNullList = []
                     for Module in ModuleList:
                         # Get ModuleAutoGen object to generate C code file and makefile
                         Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
                         if Ma is None:
                             continue
+                        MaNotNullList.append(Ma)
+
                         if Ma.PcdIsDriver:
                             Ma.PlatformInfo = Pa
                             PcdMaList.append(Ma)
-                        if Ma.CanSkipbyHash():
-                            self.HashSkipModules.append(Ma)
                             continue
+                        # if Ma.CanSkipbyHash():
+                            # self.HashSkipModules.append(Ma)
+                            # continue
 
 #                         # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
 #                         if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
@@ -2014,7 +2067,7 @@ class Build():
 #                                     Ma.CreateMakeFile(True)
 #                             if self.Target == "genmake":
 #                                 continue
-                        BuildModules.append(Ma)
+                        #BuildModules.append(Ma)
                         # Initialize all modules in tracking to False (FAIL)
                         if Ma not in GlobalData.gModuleBuildTracking:
                             GlobalData.gModuleBuildTracking[Ma] = False
@@ -2033,16 +2086,32 @@ class Build():
                     for w in auto_workers:
                         w.start()
                     for PcdMa in PcdMaList:
+                        EdkLogger.quiet("create Makefile for PcdMa: %s[%s]" % (PcdMa.MetaFile.Path, PcdMa.Arch))
                         PcdMa.CreateCodeFile(True)
                         PcdMa.CreateMakeFile(GenFfsList = CmdListDict.get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                         PcdMa.CreateAsBuiltInf()
                     for w in auto_workers:
                         w.join()
+
                     print(self.share_data.keys())
+                    EdkLogger.quiet("Multi-Process autogen is done")
+                    # Check whether make cache hit
+                    if GlobalData.gCacheSource:
+                        for Ma in MaNotNullList:
+                            if Ma.CanSkipbyMakeCache():
+                                self.HashSkipModules.append(Ma)
+                                EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                            else:
+                                self.BuildModules.append(Ma)
+                                EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                                Ma.PrintFirstCacheMissFile()
+                    else:
+                        self.BuildModules.extend(MaNotNullList)
+
                     self.Progress.Stop("done!")
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                     MakeStart = time.time()
-                    for Ma in BuildModules:
+                    for Ma in self.BuildModules:
                         # Generate build task for the module
                         if not Ma.IsBinaryModule:
                             Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))
@@ -2075,6 +2144,11 @@ class Build():
                 ExitFlag.set()
                 BuildTask.WaitForComplete()
                 self.CreateAsBuiltInf()
+                if GlobalData.gCacheDest:
+                    self.UpdateBuildCache()
+                    #Wa.ClearCurrentHashChainDict()
+                    Wa.SaveWorkSpaceAllHashChainToCache()
+                self.BuildModules = []
                 self.MakeTime += int(round((time.time() - MakeContiue)))
                 #
                 # Check for build error, and raise exception if one
@@ -2213,22 +2287,26 @@ class Build():
             RemoveDirectory(os.path.dirname(GlobalData.gDatabasePath), True)
 
     def CreateAsBuiltInf(self):
-        all_lib_set = set()
-        all_mod_set = set()
         for Module in self.BuildModules:
             Module.CreateAsBuiltInf()
+
+    def UpdateBuildCache(self):
+        all_lib_set = set()
+        all_mod_set = set()
+        EdkLogger.quiet("UpdateBuildCache")
+        for Module in self.BuildModules:
+            Module.CopyModuleToCache()
             all_mod_set.add(Module)
         for Module in self.HashSkipModules:
-            Module.CreateAsBuiltInf(True)
+            Module.CopyModuleToCache()
             all_mod_set.add(Module)
         for Module in all_mod_set:
             for lib in Module.LibraryAutoGenList:
                 all_lib_set.add(lib)
         for lib in all_lib_set:
-            lib.CreateAsBuiltInf(True)
+            lib.CopyModuleToCache()
         all_lib_set.clear()
         all_mod_set.clear()
-        self.BuildModules = []
         self.HashSkipModules = []
     ## Do some clean-up works when error occurred
     def Relinquish(self):
@@ -2343,6 +2421,8 @@ def MyOptionParser():
     Parser.add_option("--hash", action="store_true", dest="UseHashCache", default=False, help="Enable hash-based caching during build process.")
     Parser.add_option("--binary-destination", action="store", type="string", dest="BinCacheDest", help="Generate a cache of binary files in the specified directory.")
     Parser.add_option("--binary-source", action="store", type="string", dest="BinCacheSource", help="Consume a cache of binary files from the specified directory.")
+    Parser.add_option("--cache-dest", action="store", type="string", dest="CacheDest", help="Generate build cache in the specified directory.")
+    Parser.add_option("--cache-source", action="store", type="string", dest="CacheSource", help="Consume build cache from the specified directory.")
     Parser.add_option("--genfds-multi-thread", action="store_true", dest="GenfdsMultiThread", default=False, help="Enable GenFds multi thread to generate ffs file.")
     Parser.add_option("--disable-include-path-check", action="store_true", dest="DisableIncludePathCheck", default=False, help="Disable the include path check for outside of package.")
     (Opt, Args) = Parser.parse_args()

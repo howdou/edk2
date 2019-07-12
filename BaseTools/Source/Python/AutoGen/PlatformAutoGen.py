@@ -50,6 +50,7 @@ from AutoGen.DataPipe import MemoryDataPipe
 from AutoGen.ModuleAutoGen import ModuleAutoGen
 from AutoGen.AutoGen import AutoGen, _SplitOption
 import pickle
+import json
 
 ## Regular expression for splitting Dependency Expression string into tokens
 gDepexTokenPattern = re.compile("(\(|\)|\w+| \S+\.inf)")
@@ -932,6 +933,51 @@ class WorkspaceAutoGen(AutoGen):
     def CreateAsBuiltInf(self):
         return
 
+    def ClearCurrentHashChainDict(self):
+        del GlobalData.gPlatformHashChain[:]
+        GlobalData.gPackageHashChain.clear()
+        GlobalData.gModuleHashChain.clear()
+        return True
+
+    def SaveWorkSpaceAllHashChainToCache(self):
+        if not GlobalData.gCacheDest:
+            return False
+
+        if not GlobalData.gModuleHashChain:
+            EdkLogger.quiet("gModuleHashChain is empty: %s" % self)
+            return False
+
+        # save the hash chain list as cache file
+        CacheDestDir = path.join(GlobalData.gCacheDest, self.OutputDir, self.BuildTarget + "_" + self.ToolChain)
+        HashChainFile = path.join(CacheDestDir, self.MetaFile.BaseName + ".alldependencyfiles")
+        # Simply check whether the file has already existed
+        if os.path.exists(HashChainFile):
+            EdkLogger.quiet("override hashchain file in cache: %s" % HashChainFile)
+
+        #
+        WorkSpaceAllHashChain = []
+        for Module in sorted(GlobalData.gModuleHashChain.keys(), key=lambda x: str(x)):
+            New = list(set(GlobalData.gModuleHashChain[Module]) - set(WorkSpaceAllHashChain))
+            New = [(file, hash) for (file, hash) in New if not file.startswith('FinalHash_')]
+            New.sort(key=lambda x: str(x))
+            WorkSpaceAllHashChain += New
+
+        WorkSpaceAllHashChain.insert(0, "files number: " + str(len(WorkSpaceAllHashChain)))
+        WorkSpaceAllHashChain.insert(0, "modules number: " + str(len(GlobalData.gModuleHashChain)))
+
+        # save the HashChainDict as json file
+        CreateDirectory (CacheDestDir)
+        try:
+            with open(HashChainFile, 'w') as f:
+                json.dump(WorkSpaceAllHashChain, f, indent=2)
+                f.close()
+        except:
+            EdkLogger.quiet("fail to save hashchain file in cache: %s" % HashChainFile)
+            del WorkSpaceAllHashChain[:]
+            return False
+
+        del WorkSpaceAllHashChain[:]
+        return True
 
 ## AutoGen class for platform
 #
@@ -1007,6 +1053,17 @@ class PlatformAutoGen(AutoGen):
         self.DataPipe.FillData(self)
 
         return True
+
+    ## hash() operator of PlatformAutoGen
+    #
+    #  The platform file path and arch string will be used to represent
+    #  hash value of this object
+    #
+    #   @retval   int Hash value of the platform file path and arch
+    #
+    @cached_class_function
+    def __hash__(self):
+        return hash((self.MetaFile, self.Arch))
 
     @cached_class_function
     def __repr__(self):

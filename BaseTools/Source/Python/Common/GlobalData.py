@@ -106,6 +106,13 @@ gBinCacheSource = None
 gPlatformHash = None
 gPackageHash = {}
 gModuleHash = {}
+
+gPlatformHashChain = []
+gPackageHashChain = {}
+gModuleHashChain = {}
+gModuleHashChainCached = {}
+gMakeCacheHit = {}
+
 gEnableGenfdsMultiThread = False
 gSikpAutoGenCache = set()
 

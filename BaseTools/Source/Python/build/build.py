@@ -30,6 +30,7 @@ from optparse import OptionParser
 from AutoGen.PlatformAutoGen import PlatformAutoGen
 from AutoGen.ModuleAutoGen import ModuleAutoGen
 from AutoGen.WorkspaceAutoGen import WorkspaceAutoGen
+from AutoGen.AutoGenWorker import AutoGenWorkerInProcess,AutoGenManager
 from AutoGen import GenMake
 from Common import Misc as Utils
 
@@ -50,7 +51,7 @@ from PatchPcdValue.PatchPcdValue import PatchBinaryFile
 
 import Common.GlobalData as GlobalData
 from GenFds.GenFds import GenFds, GenFdsApi
-
+import multiprocessing as mp
 
 # Version and Copyright
 VersionNumber = "0.60" + ' ' + gBUILD_VERSION
@@ -343,9 +344,9 @@ class ModuleMakeUnit(BuildUnit):
     #   @param  Obj         The ModuleAutoGen object the build is working on
     #   @param  Target      The build target name, one of gSupportedTarget
     #
-    def __init__(self, Obj, Target):
-        Dependency = [ModuleMakeUnit(La, Target) for La in Obj.LibraryAutoGenList]
-        BuildUnit.__init__(self, Obj, Obj.BuildCommand, Target, Dependency, Obj.MakeFileDir)
+    def __init__(self, Obj, BuildCommand,Target):
+        Dependency = [ModuleMakeUnit(La, BuildCommand,Target) for La in Obj.LibraryAutoGenList]
+        BuildUnit.__init__(self, Obj, BuildCommand, Target, Dependency, Obj.MakeFileDir)
         if Target in [None, "", "all"]:
             self.Target = "tbuild"
 
@@ -364,10 +365,10 @@ class PlatformMakeUnit(BuildUnit):
     #   @param  Obj         The PlatformAutoGen object the build is working on
     #   @param  Target      The build target name, one of gSupportedTarget
     #
-    def __init__(self, Obj, Target):
-        Dependency = [ModuleMakeUnit(Lib, Target) for Lib in self.BuildObject.LibraryAutoGenList]
-        Dependency.extend([ModuleMakeUnit(Mod, Target) for Mod in self.BuildObject.ModuleAutoGenList])
-        BuildUnit.__init__(self, Obj, Obj.BuildCommand, Target, Dependency, Obj.MakeFileDir)
+    def __init__(self, Obj, BuildCommand, Target):
+        Dependency = [ModuleMakeUnit(Lib, BuildCommand, Target) for Lib in self.BuildObject.LibraryAutoGenList]
+        Dependency.extend([ModuleMakeUnit(Mod, BuildCommand,Target) for Mod in self.BuildObject.ModuleAutoGenList])
+        BuildUnit.__init__(self, Obj, BuildCommand, Target, Dependency, Obj.MakeFileDir)
 
 ## The class representing the task of a module build or platform build
 #
@@ -823,8 +824,31 @@ class Build():
         if not (self.LaunchPrebuildFlag and os.path.exists(self.PlatformBuildPath)):
             self.InitBuild()
 
+        self.AutoGenMgr = None
         EdkLogger.info("")
         os.chdir(self.WorkspaceDir)
+    def StartAutoGen(self,mqueue, DataPipe,SkipAutoGen,PcdMaList):
+        if SkipAutoGen:
+            return
+        feedback_q = mp.Queue()
+        file_lock = mp.Lock()
+        auto_workers = [AutoGenWorkerInProcess(mqueue,DataPipe.dump_file,feedback_q,file_lock) for _ in range(mp.cpu_count()//2)]
+        self.AutoGenMgr = AutoGenManager(auto_workers,feedback_q)
+        self.AutoGenMgr.start()
+        for w in auto_workers:
+            w.start()
+        if PcdMaList is not None:
+            for PcdMa in PcdMaList:
+                PcdMa.CreateCodeFile(True)
+                PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
+                PcdMa.CreateAsBuiltInf()
+        for w in auto_workers:
+            w.join()
+        rt = self.AutoGenMgr.Status
+        self.AutoGenMgr.kill()
+        self.AutoGenMgr.join()
+        self.AutoGenMgr = None
+        return rt
 
     ## Load configuration
     #
@@ -1189,26 +1213,25 @@ class Build():
     #   @param  CreateDepModuleMakeFile     Flag used to indicate creating makefile
     #                                       for dependent modules/Libraries
     #
-    def _BuildPa(self, Target, AutoGenObject, CreateDepsCodeFile=True, CreateDepsMakeFile=True, BuildModule=False, FfsCommand={}):
+    def _BuildPa(self, Target, AutoGenObject, CreateDepsCodeFile=True, CreateDepsMakeFile=True, BuildModule=False, FfsCommand=None, PcdMaList=None):
         if AutoGenObject is None:
             return False
-
+        if FfsCommand is None:
+            FfsCommand = {}
         # skip file generation for cleanxxx targets, run and fds target
         if Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
             # for target which must generate AutoGen code and makefile
-            if not self.SkipAutoGen or Target == 'genc':
-                self.Progress.Start("Generating code")
-                AutoGenObject.CreateCodeFile(CreateDepsCodeFile)
-                self.Progress.Stop("done!")
-            if Target == "genc":
-                return True
+            mqueue = mp.Queue()
+            for m in AutoGenObject.GetAllModuleInfo:
+                mqueue.put(m)
 
-            if not self.SkipAutoGen or Target == 'genmake':
-                self.Progress.Start("Generating makefile")
-                AutoGenObject.CreateMakeFile(CreateDepsMakeFile, FfsCommand)
-                self.Progress.Stop("done!")
-            if Target == "genmake":
-                return True
+            AutoGenObject.DataPipe.DataContainer = {"FfsCommand":FfsCommand}
+            self.Progress.Start("Generating makefile and code")
+            data_pipe_file = os.path.join(self.WorkspaceDir, "GlobalVar_%s_%s.bin" % (str(AutoGenObject.Guid),AutoGenObject.Arch))
+            AutoGenObject.DataPipe.dump(data_pipe_file)
+            autogen_rt = self.StartAutoGen(mqueue, AutoGenObject.DataPipe, self.SkipAutoGen, PcdMaList)
+            self.Progress.Stop("done!")
+            return autogen_rt
         else:
             # always recreate top/platform makefile when clean, just in case of inconsistency
             AutoGenObject.CreateCodeFile(False)
@@ -1714,7 +1737,7 @@ class Build():
                             Ma.PlatformInfo = Pa
                             PcdMaList.append(Ma)
                         self.BuildModules.append(Ma)
-                    self._BuildPa(self.Target, Pa, FfsCommand=CmdListDict)
+                    self._BuildPa(self.Target, Pa, FfsCommand=CmdListDict,PcdMaList=PcdMaList)
 
                 # Create MAP file when Load Fix Address is enabled.
                 if self.Target in ["", "all", "fds"]:
@@ -1849,7 +1872,7 @@ class Build():
                     MakeStart = time.time()
                     for Ma in self.BuildModules:
                         if not Ma.IsBinaryModule:
-                            Bt = BuildTask.New(ModuleMakeUnit(Ma, self.Target))
+                            Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))
                         # Break build if any build thread has error
                         if BuildTask.HasError():
                             # we need a full version of makefile for platform
@@ -1979,7 +2002,7 @@ class Build():
                 Wa.CreateMakeFile(False)
 
                 # Add ffs build to makefile
-                CmdListDict = None
+                CmdListDict = {}
                 if GlobalData.gEnableGenfdsMultiThread and self.Fdf:
                     CmdListDict = self._GenFfsCmd(Wa.ArchList)
 
@@ -1987,6 +2010,7 @@ class Build():
                 ExitFlag = threading.Event()
                 ExitFlag.clear()
                 self.AutoGenTime += int(round((time.time() - WorkspaceAutoGenTime)))
+                BuildModules = []
                 for Arch in Wa.ArchList:
                     PcdMaList    = []
                     AutoGenStart = time.time()
@@ -2023,34 +2047,31 @@ class Build():
                                 EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
 
                         # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
-                        if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
                             # for target which must generate AutoGen code and makefile
-                            if not self.SkipAutoGen or self.Target == 'genc':
-                                Ma.CreateCodeFile(True)
-                            if self.Target == "genc":
-                                continue
 
-                            if not self.SkipAutoGen or self.Target == 'genmake':
-                                if CmdListDict and self.Fdf and (Module.File, Arch) in CmdListDict:
-                                    Ma.CreateMakeFile(True, CmdListDict[Module.File, Arch])
-                                    del CmdListDict[Module.File, Arch]
-                                else:
-                                    Ma.CreateMakeFile(True)
-                            if self.Target == "genmake":
-                                continue
-                        self.BuildModules.append(Ma)
+                        BuildModules.append(Ma)
                         # Initialize all modules in tracking to 'FAIL'
                         if Ma.Arch not in GlobalData.gModuleBuildTracking:
                             GlobalData.gModuleBuildTracking[Ma.Arch] = dict()
                         if Ma not in GlobalData.gModuleBuildTracking[Ma.Arch]:
                             GlobalData.gModuleBuildTracking[Ma.Arch][Ma] = 'FAIL'
+                    mqueue = mp.Queue()
+                    for m in Pa.GetAllModuleInfo:
+                        mqueue.put(m)
+                    Pa.DataPipe.DataContainer = {"FfsCommand":CmdListDict}
+                    data_pipe_file = os.path.join(self.WorkspaceDir, "GlobalVar_%s_%s.bin" % (str(Pa.Guid),Pa.Arch))
+                    Pa.DataPipe.dump(data_pipe_file)
+                    autogen_rt = self.StartAutoGen(mqueue, Pa.DataPipe, self.SkipAutoGen, PcdMaList)
                     self.Progress.Stop("done!")
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
+                    if not autogen_rt:
+                        return
+                for Arch in Wa.ArchList:
                     MakeStart = time.time()
-                    for Ma in self.BuildModules:
+                    for Ma in BuildModules:
                         # Generate build task for the module
                         if not Ma.IsBinaryModule:
-                            Bt = BuildTask.New(ModuleMakeUnit(Ma, self.Target))
+                            Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))
                         # Break build if any build thread has error
                         if BuildTask.HasError():
                             # we need a full version of makefile for platform
@@ -2497,6 +2518,12 @@ def Main():
             EdkLogger.error(X.ToolName, FORMAT_INVALID, File=X.FileName, Line=X.LineNumber, ExtraData=X.Message, RaiseError=False)
         ReturnCode = FORMAT_INVALID
     except KeyboardInterrupt:
+        if MyBuild is not None:
+            if MyBuild.AutoGenMgr:
+                MyBuild.AutoGenMgr.TerminateWorkers()
+                MyBuild.AutoGenMgr.kill()
+            # for multi-thread build exits safely
+            MyBuild.Relinquish()
         ReturnCode = ABORT_ERROR
         if Option is not None and Option.debug is not None:
             EdkLogger.quiet("(Python %s on %s) " % (platform.python_version(), sys.platform) + traceback.format_exc())

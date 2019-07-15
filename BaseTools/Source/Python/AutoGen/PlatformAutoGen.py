@@ -1074,10 +1074,10 @@ class PlatformAutoGen(AutoGen):
         for m in self.Platform.Modules:
             module_obj = self.BuildDatabase[m,self.Arch,self.BuildTarget,self.ToolChain]
             Libs = GetModuleLibInstances(module_obj, self.Platform, self.BuildDatabase, self.Arch,self.BuildTarget,self.ToolChain)
-            ModuleLibs.update( set([(l.MetaFile.File,l.MetaFile.Root,l.Arch,True) for l in Libs]))
+            ModuleLibs.update( set([(l.MetaFile.File,l.MetaFile.Root,l.MetaFile.Path,l.MetaFile.BaseName,l.MetaFile.OriginalPath,l.Arch,True) for l in Libs]))
             if WithoutPcd and module_obj.PcdIsDriver:
                 continue
-            ModuleLibs.add((m.File,m.Root,module_obj.Arch,False))
+            ModuleLibs.add((m.File,m.Root,m.Path,m.BaseName,m.OriginalPath,module_obj.Arch,bool(module_obj.LibraryClass)))
 
         return ModuleLibs
 

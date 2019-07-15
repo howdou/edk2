@@ -11,6 +11,7 @@ import Common.GlobalData as GlobalData
 import os
 import pickle
 from pickle import HIGHEST_PROTOCOL
+from Common import EdkLogger
 
 class PCD_DATA():
     def __init__(self,TokenCName,TokenSpaceGuidCName,Type,DatumType,SkuInfoList,DefaultValue,
@@ -34,6 +35,7 @@ class DataPipe(object):
     def __init__(self, BuildDir=None):
         self.data_container = {}
         self.BuildDir = BuildDir
+        self.dump_file = ""
 
 class MemoryDataPipe(DataPipe):
 
@@ -41,6 +43,7 @@ class MemoryDataPipe(DataPipe):
         return self.data_container.get(key)
 
     def dump(self,file_path):
+        self.dump_file = file_path
         with open(file_path,'wb') as fd:
             pickle.dump(self.data_container,fd,pickle.HIGHEST_PROTOCOL)
 
@@ -143,5 +146,8 @@ class MemoryDataPipe(DataPipe):
 
         self.DataContainer = {"GuidDict": PlatformInfo.Platform._GuidDict}
 
+        self.DataContainer = {"DatabasePath":GlobalData.gDatabasePath}
         self.DataContainer = {"FdfParser": True if GlobalData.gFdfParser else False}
 
+        self.DataContainer = {"LogLevel": EdkLogger.GetLevel()}
+        self.DataContainer = {"LogFile": GlobalData.gOptions.LogFile if GlobalData.gOptions.LogFile is not None else ""}

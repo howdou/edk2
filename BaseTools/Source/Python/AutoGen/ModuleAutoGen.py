@@ -1664,9 +1664,7 @@ class ModuleAutoGen(AutoGen):
 
         self.GenFfsList = GenFfsList
 
-        if not self.IsLibrary and CreateLibraryMakeFile:
-            for LibraryAutoGen in self.LibraryAutoGenList:
-                LibraryAutoGen.CreateMakeFile()
+
         if self.CanSkip():
             return
 
@@ -1706,9 +1704,7 @@ class ModuleAutoGen(AutoGen):
                 self.CopyBinaryFiles()
             return
 
-        if not self.IsLibrary and CreateLibraryCodeFile:
-            for LibraryAutoGen in self.LibraryAutoGenList:
-                LibraryAutoGen.CreateCodeFile()
+
 
         if self.CanSkip():
             return

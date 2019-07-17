@@ -21,24 +21,82 @@ from queue import Empty
 import traceback
 import sys
 from AutoGen.DataPipe import MemoryDataPipe
+import logging
+
+class LogAgent(threading.Thread):
+    def __init__(self,log_q,log_level,log_file=None):
+        super(LogAgent,self).__init__()
+        self.log_q = log_q
+        self.log_level = log_level
+        self.log_file = log_file
+    def InitLogger(self):
+        # For DEBUG level (All DEBUG_0~9 are applicable)
+        self._DebugLogger_agent = logging.getLogger("tool_debug_agent")
+        _DebugFormatter = logging.Formatter("[%(asctime)s.%(msecs)d]: %(message)s", datefmt="%H:%M:%S")
+        self._DebugLogger_agent.setLevel(self.log_level)
+        _DebugChannel = logging.StreamHandler(sys.stdout)
+        _DebugChannel.setFormatter(_DebugFormatter)
+        self._DebugLogger_agent.addHandler(_DebugChannel)
+
+        # For VERBOSE, INFO, WARN level
+        self._InfoLogger_agent = logging.getLogger("tool_info_agent")
+        _InfoFormatter = logging.Formatter("%(message)s")
+        self._InfoLogger_agent.setLevel(self.log_level)
+        _InfoChannel = logging.StreamHandler(sys.stdout)
+        _InfoChannel.setFormatter(_InfoFormatter)
+        self._InfoLogger_agent.addHandler(_InfoChannel)
+
+        # For ERROR level
+        self._ErrorLogger_agent = logging.getLogger("tool_error_agent")
+        _ErrorFormatter = logging.Formatter("%(message)s")
+        self._ErrorLogger_agent.setLevel(self.log_level)
+        _ErrorCh = logging.StreamHandler(sys.stderr)
+        _ErrorCh.setFormatter(_ErrorFormatter)
+        self._ErrorLogger_agent.addHandler(_ErrorCh)
+
+        if self.log_file:
+            if os.path.exists(self.log_file):
+                os.remove(self.log_file)
+            _Ch = logging.FileHandler(self.log_file)
+            _Ch.setFormatter(_DebugFormatter)
+            self._DebugLogger_agent.addHandler(_Ch)
+
+            _Ch= logging.FileHandler(self.log_file)
+            _Ch.setFormatter(_InfoFormatter)
+            self._InfoLogger_agent.addHandler(_Ch)
+
+            _Ch = logging.FileHandler(self.log_file)
+            _Ch.setFormatter(_ErrorFormatter)
+            self._ErrorLogger_agent.addHandler(_Ch)
+
+    def run(self):
+        self.InitLogger()
+        while True:
+            log_message = self.log_q.get()
+            if log_message is None:
+                break
+            if log_message.name == "tool_error":
+                self._ErrorLogger_agent.log(log_message.levelno,log_message.getMessage())
+            elif log_message.name == "tool_info":
+                self._InfoLogger_agent.log(log_message.levelno,log_message.getMessage())
+            elif log_message.name == "tool_debug":
+                self._DebugLogger_agent.log(log_message.levelno,log_message.getMessage())
+            else:
+                self._InfoLogger_agent.log(log_message.levelno,log_message.getMessage())
+
+    def kill(self):
+        self.log_q.put(None)
 class AutoGenManager(threading.Thread):
     def __init__(self,autogen_workers, feedback_q):
         super(AutoGenManager,self).__init__()
         self.autogen_workers = autogen_workers
         self.feedback_q = feedback_q
-        self.terminate = False
         self.Status = True
     def run(self):
         try:
             while True:
-                if self.terminate:
-                    break
-                if self.feedback_q.empty():
-                    time.sleep(1)
-                    continue
-                badnews = self.feedback_q.get(False)
-                if badnews:
-                    print(badnews)
+                badnews = self.feedback_q.get()
+                if badnews is None:
                     self.Status = False
                     self.TerminateWorkers()
                     break
@@ -46,7 +104,7 @@ class AutoGenManager(threading.Thread):
             return
 
     def kill(self):
-        self.terminate = True
+        self.feedback_q.put(None)
 
     def TerminateWorkers(self):
         for w in self.autogen_workers:
@@ -54,7 +112,7 @@ class AutoGenManager(threading.Thread):
                 w.terminate()
 
 class AutoGenWorkerInProcess(mp.Process):
-    def __init__(self,module_queue,data_pipe_file_path,feedback_q,file_lock, share_data):
+    def __init__(self,module_queue,data_pipe_file_path,feedback_q,file_lock, share_data,log_q):
         mp.Process.__init__(self)
         self.module_queue = module_queue
         self.data_pipe_file_path =data_pipe_file_path
@@ -63,6 +121,7 @@ class AutoGenWorkerInProcess(mp.Process):
         self.PlatformMetaFileSet = {}
         self.file_lock = file_lock
         self.share_data = share_data
+        self.log_q = log_q
     def GetPlatformMetaFile(self,filepath,root):
         try:
             return self.PlatformMetaFileSet[(filepath,root)]
@@ -77,14 +136,11 @@ class AutoGenWorkerInProcess(mp.Process):
                     self.feedback_q.put(taskname + ":" + "load data pipe %s failed." % self.data_pipe_file_path)
                 self.data_pipe = MemoryDataPipe()
                 self.data_pipe.load(self.data_pipe_file_path)
-            EdkLogger.Initialize()
+            EdkLogger.LogClientInitialize(self.log_q)
             loglevel = self.data_pipe.Get("LogLevel")
             if not loglevel:
                 loglevel = EdkLogger.INFO
             EdkLogger.SetLevel(loglevel)
-            logfile = self.data_pipe.Get("LogFile")
-            if logfile:
-                EdkLogger.SetLogFile(logfile)
             target = self.data_pipe.Get("P_Info").get("Target")
             toolchain = self.data_pipe.Get("P_Info").get("ToolChain")
             archlist = self.data_pipe.Get("P_Info").get("ArchList")

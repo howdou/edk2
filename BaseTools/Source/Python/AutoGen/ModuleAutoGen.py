@@ -1957,8 +1957,7 @@ class ModuleAutoGen(AutoGen):
             else:
                 EdkLogger.quiet("LibHashChainList of %s[%s] is missing for driver: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch, self.MetaFile.BaseName, self.Arch))
 
-        if (self.MetaFile.Path, self.Arch, 'HashHexDigest') not in gDict:
-            gDict[(self.MetaFile.Path, self.Arch, 'HashHexDigest')] = m.hexdigest()
+        gDict[(self.MetaFile.Path, self.Arch, 'HashHexDigest')] = m.hexdigest()
 
         if (self.MetaFile.Path, self.Arch, 'DriverHashChainList') not in gDict:
             gDict[(self.MetaFile.Path, self.Arch, 'DriverHashChainList')] = sorted(FileSet, key=lambda x: str(x[0]))

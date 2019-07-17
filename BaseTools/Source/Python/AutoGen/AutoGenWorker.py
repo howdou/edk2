@@ -57,15 +57,23 @@ class Worker():
             
             Ma = ModuleAutoGen(self.Wa,module_metafile,target,toolchain,arch,PlatformMetaFile,self.data_pipe)
             Ma.IsLibrary = IsLib
-            Ma.CreateCodeFile()
-            Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
+
+            # print("GlobalData.gCacheSource = %s " % GlobalData.gCacheSource)
+            # print("GlobalData.gCacheDest = %s " % GlobalData.gCacheDest)
+
+            if not self.ignore_make:
+                Ma.CreateCodeFile()
+                Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
+                Ma.GenLibHashChainInChildProcess(self.share_data)
+            else:
+                Ma.GenDriverHashInChildProcess(self.share_data)
+                Ma.SaveHashChainFileToCacheInChildProcess(self.share_data)
+                Ma.CanSkipbyMakeCacheInChildProcess(self.share_data)
+                Ma.PrintFirstCacheMissFileInChildProcess(self.share_data)
+
+            #self.share_data[(Ma.MetaFile.Path, Ma.Arch)]= str(Ma)
             #print(str(Ma))
             #EdkLogger.quiet("EdkLogger.quiet: %s" % str(Ma))
-            Ma.GenLibHashChainInChildProcess(self.share_data)
-            #self.share_data[(Ma.MetaFile.Path, Ma.Arch)]= str(Ma)
-
-
-#             print ("Processs ID: %d" % os.getpid(), module_file, time.perf_counter() - begin)
 
 
 class AutoGenWorkerInThread(threading.Thread,Worker):
@@ -89,12 +97,13 @@ class AutoGenWorkerInThread(threading.Thread,Worker):
 #             ps.print_stats(50)
 
 class AutoGenWorkerInProcess(mp.Process,Worker):
-    def __init__(self,module_queue,data_pipe,share_data):
+    def __init__(self,module_queue,data_pipe,share_data,ignore_make=False):
         mp.Process.__init__(self)
         Worker.__init__(self,module_queue,data_pipe,share_data)
         self.module_queue = module_queue
         self.data_pipe = data_pipe
         self.share_data = share_data
+        self.ignore_make = ignore_make
 
     def printStatus(self):
         print("Processs ID: %d Run %d modules in AutoGen " % (os.getpid(),len(AutoGen.GetCache())))

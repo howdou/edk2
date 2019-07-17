@@ -2060,7 +2060,7 @@ class Build():
                         for item in Pa.GetAllModuleInfo:
                             fw.write(",".join([str(i) for i in item]))
                             fw.write("\n")
-                    auto_workers = [AutoGenWorkerInProcess(mqueue,Pa.DataPipe,self.share_data) for i in range(mp.cpu_count()//2)]
+                    auto_workers = [AutoGenWorkerInProcess(mqueue,Pa.DataPipe,self.share_data, False) for i in range(mp.cpu_count()//2)]
                     print ("Create Process: ", time.clock() - begin)
                     for w in auto_workers:
                         w.start()
@@ -2073,18 +2073,36 @@ class Build():
                     for w in auto_workers:
                         w.join()
 
-                    print(self.share_data.keys())
+                    # second multiprocessing
+                    mqueue = mp.Queue()
+                    for m in Pa.GetAllModuleInfo:
+                        mqueue.put(m)
+                    begin = time.clock()
+                    auto_workers = [AutoGenWorkerInProcess(mqueue,Pa.DataPipe,self.share_data, True) for i in range(mp.cpu_count()//2)]
+                    print ("Create Process: ", time.clock() - begin)
+                    for w in auto_workers:
+                        w.start()
+                    for PcdMa in PcdMaList:
+                        PcdMa.GenDriverHashInChildProcess(self.share_data)
+                        PcdMa.SaveHashChainFileToCacheInChildProcess(self.share_data)
+                        PcdMa.CanSkipbyMakeCacheInChildProcess(self.share_data)
+                        PcdMa.PrintFirstCacheMissFileInChildProcess(self.share_data)
+                    for w in auto_workers:
+                        w.join()
+
+                    #print(self.share_data.keys())
                     EdkLogger.quiet("Multi-Process autogen is done")
                     # Check whether make cache hit
                     if GlobalData.gCacheSource:
                         for Ma in MaNotNullList:
-                            if Ma.CanSkipbyMakeCache():
-                                self.HashSkipModules.append(Ma)
-                                EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
-                            else:
-                                self.BuildModules.append(Ma)
-                                EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
-                                Ma.PrintFirstCacheMissFile()
+                            if (Ma.MetaFile.Path, Ma.Arch, 'CacheHit') in self.share_data:
+                                if self.share_data[(Ma.MetaFile.Path, Ma.Arch, 'CacheHit')]:
+                                    self.HashSkipModules.append(Ma)
+                                    #EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                                    continue
+                            self.BuildModules.append(Ma)
+                            #EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                            #Ma.PrintFirstCacheMissFile()
                     else:
                         self.BuildModules.extend(MaNotNullList)
 

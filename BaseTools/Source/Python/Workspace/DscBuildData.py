@@ -19,8 +19,8 @@ from Common.Misc import *
 from types import *
 from Common.Expression import *
 from CommonDataClass.CommonClass import SkuInfoClass
-from Common.TargetTxtClassObject import TargetTxtClassObject
-from Common.ToolDefClassObject import ToolDefClassObject
+from Common.TargetTxtClassObject import TargetTxt
+from Common.ToolDefClassObject import ToolDef
 from .MetaDataTable import *
 from .MetaFileTable import *
 from .MetaFileParser import *
@@ -1224,7 +1224,27 @@ class DscBuildData(PlatformBuildClassObject):
                         if ' ' + Option not in self._BuildOptions[CurKey]:
                             self._BuildOptions[CurKey] += ' ' + Option
         return self._BuildOptions
+    def GetBuildOptionsByPkg(self, Module, ModuleType):
 
+        local_pkg = os.path.split(Module.LocalPkg())[0]
+        if self._ModuleTypeOptions is None:
+            self._ModuleTypeOptions = OrderedDict()
+        if ModuleType not in self._ModuleTypeOptions:
+            options = OrderedDict()
+            self._ModuleTypeOptions[ ModuleType] = options
+            RecordList = self._RawData[MODEL_META_DATA_BUILD_OPTION, self._Arch]
+            for ToolChainFamily, ToolChain, Option, Dummy1, Dummy2, Dummy3, Dummy4, Dummy5 in RecordList:
+                if Dummy2 not in (TAB_COMMON,local_pkg.upper(),"EDKII"):
+                    continue
+                Type = Dummy3
+                if Type.upper() == ModuleType.upper():
+                    Key = (ToolChainFamily, ToolChain)
+                    if Key not in options or not ToolChain.endswith('_FLAGS') or Option.startswith('='):
+                        options[Key] = Option
+                    else:
+                        if ' ' + Option not in options[Key]:
+                            options[Key] += ' ' + Option
+        return self._ModuleTypeOptions[ModuleType]
     def GetBuildOptionsByModuleType(self, Edk, ModuleType):
         if self._ModuleTypeOptions is None:
             self._ModuleTypeOptions = OrderedDict()
@@ -1353,11 +1373,11 @@ class DscBuildData(PlatformBuildClassObject):
                                         self._PCD_TYPE_STRING_[MODEL_PCD_FEATURE_FLAG],
                                         self._PCD_TYPE_STRING_[MODEL_PCD_DYNAMIC],
                                         self._PCD_TYPE_STRING_[MODEL_PCD_DYNAMIC_EX]]:
-                        self.Pcds[Name, Guid] = copy.deepcopy(PcdInDec)
-                        self.Pcds[Name, Guid].DefaultValue = NoFiledValues[( Guid, Name)][0]
+                        self._Pcds[Name, Guid] = copy.deepcopy(PcdInDec)
+                        self._Pcds[Name, Guid].DefaultValue = NoFiledValues[( Guid, Name)][0]
                     if PcdInDec.Type in [self._PCD_TYPE_STRING_[MODEL_PCD_DYNAMIC],
                                         self._PCD_TYPE_STRING_[MODEL_PCD_DYNAMIC_EX]]:
-                        self.Pcds[Name, Guid].SkuInfoList = {TAB_DEFAULT:SkuInfoClass(TAB_DEFAULT, self.SkuIds[TAB_DEFAULT][0], '', '', '', '', '', NoFiledValues[( Guid, Name)][0])}
+                        self._Pcds[Name, Guid].SkuInfoList = {TAB_DEFAULT:SkuInfoClass(TAB_DEFAULT, self.SkuIds[TAB_DEFAULT][0], '', '', '', '', '', NoFiledValues[( Guid, Name)][0])}
         return AllPcds
 
     def OverrideByFdfOverAll(self,AllPcds):
@@ -1399,8 +1419,8 @@ class DscBuildData(PlatformBuildClassObject):
                     if PcdInDec.Type in [self._PCD_TYPE_STRING_[MODEL_PCD_FIXED_AT_BUILD],
                                         self._PCD_TYPE_STRING_[MODEL_PCD_PATCHABLE_IN_MODULE],
                                         self._PCD_TYPE_STRING_[MODEL_PCD_FEATURE_FLAG]]:
-                        self.Pcds[Name, Guid] = copy.deepcopy(PcdInDec)
-                        self.Pcds[Name, Guid].DefaultValue = Value
+                        self._Pcds[Name, Guid] = copy.deepcopy(PcdInDec)
+                        self._Pcds[Name, Guid].DefaultValue = Value
         return AllPcds
 
     def ParsePcdNameStruct(self,NamePart1,NamePart2):
@@ -3262,15 +3282,11 @@ class DscBuildData(PlatformBuildClassObject):
         self._ToolChainFamily = TAB_COMPILER_MSFT
         BuildConfigurationFile = os.path.normpath(os.path.join(GlobalData.gConfDirectory, "target.txt"))
         if os.path.isfile(BuildConfigurationFile) == True:
-            TargetTxt      = TargetTxtClassObject()
-            TargetTxt.LoadTargetTxtFile(BuildConfigurationFile)
             ToolDefinitionFile = TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_TOOL_CHAIN_CONF]
             if ToolDefinitionFile == '':
                 ToolDefinitionFile = "tools_def.txt"
                 ToolDefinitionFile = os.path.normpath(mws.join(self.WorkspaceDir, 'Conf', ToolDefinitionFile))
             if os.path.isfile(ToolDefinitionFile) == True:
-                ToolDef        = ToolDefClassObject()
-                ToolDef.LoadToolDefFile(ToolDefinitionFile)
                 ToolDefinition = ToolDef.ToolsDefTxtDatabase
                 if TAB_TOD_DEFINES_FAMILY not in ToolDefinition \
                    or self._Toolchain not in ToolDefinition[TAB_TOD_DEFINES_FAMILY] \

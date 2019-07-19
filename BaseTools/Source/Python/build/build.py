@@ -1995,7 +1995,7 @@ class Build():
                 ExitFlag = threading.Event()
                 ExitFlag.clear()
                 self.AutoGenTime += int(round((time.time() - WorkspaceAutoGenTime)))
-                BuildModules = []
+                self.BuildModules = []
                 for Arch in Wa.ArchList:
                     PcdMaList    = []
                     AutoGenStart = time.time()
@@ -2034,7 +2034,7 @@ class Build():
                         # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
                             # for target which must generate AutoGen code and makefile
 
-                        BuildModules.append(Ma)
+                        self.BuildModules.append(Ma)
                         # Initialize all modules in tracking to 'FAIL'
                         if Ma.Arch not in GlobalData.gModuleBuildTracking:
                             GlobalData.gModuleBuildTracking[Ma.Arch] = dict()
@@ -2053,7 +2053,7 @@ class Build():
                         return
                 for Arch in Wa.ArchList:
                     MakeStart = time.time()
-                    for Ma in BuildModules:
+                    for Ma in self.BuildModules:
                         # Generate build task for the module
                         if not Ma.IsBinaryModule:
                             Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))

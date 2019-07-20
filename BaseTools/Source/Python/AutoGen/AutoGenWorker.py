@@ -185,8 +185,21 @@ class AutoGenWorkerInProcess(mp.Process):
                 toolchain = self.data_pipe.Get("P_Info").get("ToolChain")
                 Ma = ModuleAutoGen(self.Wa,module_metafile,target,toolchain,arch,PlatformMetaFile,self.data_pipe)
                 Ma.IsLibrary = IsLib
-                Ma.CreateCodeFile()
-                Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
+                if GlobalData.gBinCacheSource:
+                    Ma.GenModuleFilesHash(self.share_data)
+                    Ma.GenPreMakefileHash(self.share_data)
+                    if Ma.CanSkipbyPreMakefileCache(self.share_data):
+                       continue
+
+                Ma.CreateCodeFile(gDict=self.share_data)
+                GlobalData.FfsCmd = FfsCmd
+                Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]), gDict=self.share_data)
+
+                if GlobalData.gBinCacheSource:
+                    Ma.GenMakeHeaderFilesHash(self.share_data)
+                    Ma.GenMakeHash(self.share_data)
+                    # if Ma.MakeHashHit(self.share_data):
+                        # return
         except Empty:
             pass
         except:

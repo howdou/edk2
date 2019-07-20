@@ -811,6 +811,7 @@ class Build():
         EdkLogger.info("")
         os.chdir(self.WorkspaceDir)
         self.share_data = Manager().dict()
+        GlobalData.gDict = self.share_data
         self.log_q = log_q
     def StartAutoGen(self,mqueue, DataPipe,SkipAutoGen,PcdMaList,share_data):
         if SkipAutoGen:
@@ -824,8 +825,14 @@ class Build():
             w.start()
         if PcdMaList is not None:
             for PcdMa in PcdMaList:
-                PcdMa.CreateCodeFile(True)
-                PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
+                if GlobalData.gBinCacheSource:
+                    PcdMa.GenModuleFilesHash(share_data)
+                    PcdMa.GenPreMakefileHash(share_data)
+                    if PcdMa.CanSkipbyPreMakefileCache(share_data):
+                       continue
+
+                PcdMa.CreateCodeFile(True, gDict=share_data)
+                PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]),gDict=share_data)
                 PcdMa.CreateAsBuiltInf()
         for w in auto_workers:
             w.join()
@@ -1996,6 +2003,7 @@ class Build():
                 ExitFlag.clear()
                 self.AutoGenTime += int(round((time.time() - WorkspaceAutoGenTime)))
                 self.BuildModules = []
+                TotalModules = []
                 for Arch in Wa.ArchList:
                     PcdMaList    = []
                     AutoGenStart = time.time()
@@ -2013,28 +2021,31 @@ class Build():
                             if Inf in Pa.Platform.Modules:
                                 continue
                             ModuleList.append(Inf)
+
                     for Module in ModuleList:
                         # Get ModuleAutoGen object to generate C code file and makefile
                         Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
 
                         if Ma is None:
                             continue
+
                         if Ma.PcdIsDriver:
                             Ma.PlatformInfo = Pa
                             PcdMaList.append(Ma)
-                        if Ma.CanSkipbyHash():
-                            self.HashSkipModules.append(Ma)
-                            if GlobalData.gBinCacheSource:
-                                EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
-                            continue
-                        else:
-                            if GlobalData.gBinCacheSource:
-                                EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                        # if Ma.CanSkipbyHash():
+                            # self.HashSkipModules.append(Ma)
+                            # if GlobalData.gBinCacheSource:
+                                # EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                            # continue
+                        # else:
+                            # if GlobalData.gBinCacheSource:
+                                # EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
 
                         # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
                             # for target which must generate AutoGen code and makefile
 
-                        self.BuildModules.append(Ma)
+                        #self.BuildModules.append(Ma)
+                        TotalModules.append(Ma)
                         # Initialize all modules in tracking to 'FAIL'
                         if Ma.Arch not in GlobalData.gModuleBuildTracking:
                             GlobalData.gModuleBuildTracking[Ma.Arch] = dict()
@@ -2046,7 +2057,24 @@ class Build():
                     Pa.DataPipe.DataContainer = {"FfsCommand":CmdListDict}
                     data_pipe_file = os.path.join(Pa.BuildDir, "GlobalVar_%s_%s.bin" % (str(Pa.Guid),Pa.Arch))
                     Pa.DataPipe.dump(data_pipe_file)
+
+                    # Add Platform and Package level hash in share_data
+                    self.share_data[('PlatformHash')] = GlobalData.gPlatformHash
+                    for PkgName in GlobalData.gPackageHash.keys():
+                        self.share_data[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
+
                     autogen_rt = self.StartAutoGen(mqueue, Pa.DataPipe, self.SkipAutoGen, PcdMaList,self.share_data)
+
+                    if GlobalData.gBinCacheSource:
+                        for Ma in TotalModules:
+                            if (Ma.MetaFile.Path, Ma.Arch, 'CacheHit') in self.share_data:
+                                if self.share_data[((Ma.MetaFile.Path, Ma.Arch, 'CacheHit'))]:
+                                    self.HashSkipModules.append(Ma)
+                                else:
+                                    self.BuildModules.append(Ma)
+                    else:
+                        self.BuildModules.extend(TotalModules)
+
                     self.Progress.Stop("done!")
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                     if not autogen_rt:

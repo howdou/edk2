@@ -906,6 +906,11 @@ cleanlib:
                                     self._AutoGenObject.IncludePathList + self._AutoGenObject.BuildOptionIncPathList
                                     )
 
+        self.DependencyHeaderFileSet = set()
+        if FileDependencyDict:
+            for Dependency in FileDependencyDict.values():
+                self.DependencyHeaderFileSet.update(set(Dependency))
+
         # Check if header files are listed in metafile
         # Get a list of unique module header source files from MetaFile
         headerFilesInMetaFileSet = set()

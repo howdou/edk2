@@ -26,6 +26,7 @@ from Workspace.MetaFileCommentParser import UsageList
 from .GenPcdDb import CreatePcdDatabaseCode
 from Common.caching import cached_class_function
 from AutoGen.ModuleAutoGenHelper import PlatformInfo,WorkSpaceInfo
+import json
 
 ## Mapping Makefile type
 gMakeTypeMap = {TAB_COMPILER_MSFT:"nmake", "GCC":"gmake"}
@@ -252,6 +253,7 @@ class ModuleAutoGen(AutoGen):
         self.AutoGenDepSet = set()
         self.ReferenceModules = []
         self.ConstPcd                  = {}
+        self.Makefile     = None
 
     def __init_platform_info__(self):
         pinfo = self.DataPipe.Get("P_Info")
@@ -1595,11 +1597,16 @@ class ModuleAutoGen(AutoGen):
         self.IsAsBuiltInfCreated = True
 
     def CopyModuleToCache(self):
-        FileDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.Name, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        FileDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
         CreateDirectory (FileDir)
-        HashFile = path.join(self.BuildDir, self.Name + '.hash')
-        if os.path.exists(HashFile):
-            CopyFileOnChange(HashFile, FileDir)
+        # HashFile = path.join(self.BuildDir, self.Name + '.hash')
+        # EdkLogger.quiet("CopyModuleToCache FileDir: %s", FileDir)
+        # EdkLogger.quiet("CopyModuleToCache HashFile: %s", HashFile)
+        # if os.path.exists(HashFile):
+            # CopyFileOnChange(HashFile, FileDir)
+
+        self.SaveHashChainFileToCache(GlobalData.gDict)
+
         ModuleFile = path.join(self.OutputDir, self.Name + '.inf')
         if os.path.exists(ModuleFile):
             CopyFileOnChange(ModuleFile, FileDir)
@@ -1616,6 +1623,60 @@ class ModuleAutoGen(AutoGen):
                 destination_dir = os.path.dirname(destination_file)
                 CreateDirectory(destination_dir)
                 CopyFileOnChange(File, destination_dir)
+
+    def SaveHashChainFileToCache(self, gDict):
+        if not GlobalData.gBinCacheDest:
+            return False
+
+        self.GenPreMakefileHash(gDict)
+        if (self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest') not in gDict:
+            EdkLogger.quiet("no PreMakefileHashHexDigest for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
+            return False
+
+        self.GenMakeHash(gDict)
+        if (self.MetaFile.Path, self.Arch, 'MakeHashChain') not in gDict:
+            EdkLogger.quiet("no MakeHashChain for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
+            return False
+
+        # save the hash chain list as cache file
+        CacheDestDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        PreMakefileHashHexDigest = path.join(CacheDestDir, self.Name + ".PreMakefileHashHexDigest")
+        MakeHashHexDigest = path.join(CacheDestDir, self.Name + ".MakeHashHexDigest")
+        MakeHashChain = path.join(CacheDestDir, self.Name + ".MakeHashChain")
+        # Simply check whether the file has already existed
+        # Not check the HashChain file content same or not because it could be big
+        if os.path.exists(PreMakefileHashHexDigest):
+            EdkLogger.quiet("override PreMakefileHashHexDigest file in cache: %s" % PreMakefileHashHexDigest)
+        if os.path.exists(MakeHashHexDigest):
+            EdkLogger.quiet("override MakeHashHexDigest file in cache: %s" % MakeHashHexDigest)
+        if os.path.exists(MakeHashChain):
+            EdkLogger.quiet("override MakeHashChain file in cache: %s" % MakeHashChain)
+
+        # save the HashChainDict as json file
+        CreateDirectory (CacheDestDir)
+        try:
+            Hash = gDict[(self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest')].encode('utf-8')
+            SaveFileOnChange(PreMakefileHashHexDigest, Hash, True)
+        except:
+            EdkLogger.quiet("fail to save PreMakefileHashHexDigest file in cache: %s" % PreMakefileHashHexDigest)
+            return False
+
+        try:
+            Hash = gDict[(self.MetaFile.Path, self.Arch, 'MakeHashHexDigest')].encode('utf-8')
+            SaveFileOnChange(MakeHashHexDigest, Hash, True)
+        except:
+            EdkLogger.quiet("fail to save MakeHashHexDigest file in cache: %s" % MakeHashHexDigest)
+            return False
+
+        try:
+            with open(MakeHashChain, 'w') as f:
+                json.dump(gDict[(self.MetaFile.Path, self.Arch, 'MakeHashChain')], f, indent=2)
+                f.close()
+        except:
+            EdkLogger.quiet("fail to save MakeHashChain file in cache: %s" % MakeHashChain)
+            return False
+
+        return True
 
     def AttemptModuleCacheCopy(self):
         # If library or Module is binary do not skip by hash
@@ -1656,7 +1717,10 @@ class ModuleAutoGen(AutoGen):
     #                                       dependent libraries will be created
     #
     @cached_class_function
-    def CreateMakeFile(self, CreateLibraryMakeFile=True, GenFfsList = []):
+    def CreateMakeFile(self, CreateLibraryMakeFile=True, GenFfsList = [], gDict= dict()):
+        if (self.MetaFile.Path, self.Arch, 'CreateMakeFileDone') in gDict:
+            return
+
         # nest this function inside it's only caller.
         def CreateTimeStamp():
             FileSet = {self.MetaFile.Path}
@@ -1701,6 +1765,13 @@ class ModuleAutoGen(AutoGen):
 
         CreateTimeStamp()
 
+        MakefileType = Makefile._FileType
+        MakefileName = Makefile._FILE_NAME_[MakefileType]
+        MakefilePath = os.path.join(self.MakeFileDir, MakefileName)
+        gDict[(self.MetaFile.Path, self.Arch, 'MakefilePath')] = MakefilePath
+        gDict[(self.MetaFile.Path, self.Arch, 'DependencyHeaderFileSet')] = Makefile.DependencyHeaderFileSet
+        gDict[(self.MetaFile.Path, self.Arch, 'CreateMakeFileDone')] = True
+
     def CopyBinaryFiles(self):
         for File in self.Module.Binaries:
             SrcPath = File.Path
@@ -1711,8 +1782,10 @@ class ModuleAutoGen(AutoGen):
     #   @param      CreateLibraryCodeFile   Flag indicating if or not the code of
     #                                       dependent libraries will be created
     #
-    def CreateCodeFile(self, CreateLibraryCodeFile=True):
+    def CreateCodeFile(self, CreateLibraryCodeFile=True, gDict=dict()):
         if self.IsCodeFileCreated:
+            return
+        if (self.MetaFile.Path, self.Arch, 'CreateCodeFileDone') in gDict:
             return
 
         # Need to generate PcdDatabase even PcdDriver is binarymodule
@@ -1766,6 +1839,7 @@ class ModuleAutoGen(AutoGen):
                             (" ".join(AutoGenList), " ".join(IgoredAutoGenList), self.Name, self.Arch))
 
         self.IsCodeFileCreated = True
+        gDict[(self.MetaFile.Path, self.Arch, 'CreateCodeFileDone')] = True
         return AutoGenList
 
     ## Summarize the ModuleAutoGen objects of all libraries used by this module
@@ -1834,6 +1908,247 @@ class ModuleAutoGen(AutoGen):
         GlobalData.gModuleHash[self.Arch][self.Name] = m.hexdigest()
 
         return GlobalData.gModuleHash[self.Arch][self.Name].encode('utf-8')
+
+    def GenModuleFilesHash(self, gDict):
+        # Early exit if module or library has been hashed and is in memory
+        if (self.MetaFile.Path, self.Arch, 'ModuleFilesChain') in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch, 'ModuleFilesChain')]
+
+        DependencyFileSet = set()
+        # Add Module Meta file
+        DependencyFileSet.add(self.MetaFile)
+        # Add Module's source files
+        if self.SourceFileList:
+            for File in set(self.SourceFileList):
+                DependencyFileSet.add(File)
+
+        # Caculate all above dependency files hash
+        # Initialze hash object
+        FileList = []
+        m = hashlib.md5()
+        for File in sorted(DependencyFileSet, key=lambda x: str(x)):
+            if not os.path.exists(str(File)):
+                EdkLogger.quiet("header file: %s is missing for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
+                continue
+            f = open(str(File), 'rb')
+            Content = f.read()
+            f.close()
+            m.update(Content)
+            FileList.append((str(File), hashlib.md5(Content).hexdigest()))
+
+        if (self.MetaFile.Path, self.Arch, 'ModuleFilesChain') not in gDict:
+            gDict[(self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest')] = m.digest()
+            gDict[(self.MetaFile.Path, self.Arch, 'ModuleFilesHashHexDigest')] = m.hexdigest()
+            gDict[(self.MetaFile.Path, self.Arch, 'ModuleFilesChain')] = FileList
+
+    def GenPreMakefileHash(self, gDict):
+        # Early exit if module or library has been hashed and is in memory
+        if (self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest') in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest')]
+
+        if (self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest') not in gDict:
+            self.GenModuleFilesHash(gDict)
+
+        # Initialze hash object
+        m = hashlib.md5()
+
+        # Add Platform level hash
+        if ('PlatformHash') in gDict:
+            m.update(gDict[('PlatformHash')].encode('utf-8'))
+        else:
+            EdkLogger.quiet("PlatformHash is missing in global dict")
+
+        # Add Package level hash
+        if self.DependentPackageList:
+            for Pkg in sorted(self.DependentPackageList, key=lambda x: x.PackageName):
+                if (Pkg.PackageName, 'PackageHash') in gDict:
+                    m.update(gDict[(Pkg.PackageName, 'PackageHash')].encode('utf-8'))
+                else:
+                    EdkLogger.quiet("%s PackageHash needed by %s[%s] is missing in global dict" %(Pkg.PackageName, self.MetaFile.Name, self.Arch))
+
+        # Add Library hash
+        if self.LibraryAutoGenList:
+            for Lib in sorted(self.LibraryAutoGenList, key=lambda x: x.Name):
+                if (Lib.MetaFile.Path, Lib.Arch, 'PreMakefileHashHexDigest') not in gDict:
+                    Lib.GenPreMakefileHash(gDict)
+                m.update(gDict[(Lib.MetaFile.Path, Lib.Arch, 'ModuleFilesHashDigest')])
+
+        # Add Module self
+        if (self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest') in gDict:
+            m.update(gDict[(self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest')])
+        else:
+            EdkLogger.quiet("%s[%s] ModuleFilesHashDigest is missing in global dict" %(self.MetaFile.Name, self.Arch))
+
+        if (self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest') not in gDict:
+            #gDict[(self.MetaFile.Path, self.Arch, 'PreMakefileHashDigest')] = m.digest()
+            gDict[(self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest')] = m.hexdigest()
+
+
+    def GenMakeHeaderFilesHash(self, gDict):
+        # Early exit if module or library has been hashed and is in memory
+        if (self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest') in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest')]
+
+        if (self.MetaFile.Path, self.Arch, 'CreateCodeFileDone') not in gDict:
+            self.CreateCodeFile(gDict=gDict)
+        if (self.MetaFile.Path, self.Arch, 'CreateMakeFileDone') not in gDict:
+            if hasattr(GlobalData, 'FfsCmd'):
+                self.CreateMakeFile(GenFfsList=GlobalData.FfsCmd.get((self.MetaFile.File, self.Arch),[]), gDict=gDict)
+
+        DependencyFileSet = set()
+        # Add Makefile
+        if (self.MetaFile.Path, self.Arch, 'MakefilePath') in gDict:
+            DependencyFileSet.add(gDict[(self.MetaFile.Path, self.Arch, 'MakefilePath')])
+        else:
+            EdkLogger.quiet("makefile is missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+
+        # Add header files
+        if (self.MetaFile.Path, self.Arch, 'DependencyHeaderFileSet') in gDict:
+            for File in gDict[(self.MetaFile.Path, self.Arch, 'DependencyHeaderFileSet')]:
+                DependencyFileSet.add(File)
+        else:
+            EdkLogger.quiet("DependencyHeaderFileSet is missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+
+        # Add AutoGen files
+        if self.AutoGenFileList:
+            for File in set(self.AutoGenFileList):
+                DependencyFileSet.add(File)
+
+        # Caculate all above dependency files hash
+        # Initialze hash object
+        FileList = []
+        m = hashlib.md5()
+        for File in sorted(DependencyFileSet, key=lambda x: str(x)):
+            if not os.path.exists(str(File)):
+                EdkLogger.quiet("header file: %s doesn't exist for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
+                continue
+            f = open(str(File), 'rb')
+            Content = f.read()
+            f.close()
+            m.update(Content)
+            FileList.append((str(File), hashlib.md5(Content).hexdigest()))
+
+        if (self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest') not in gDict:
+            gDict[(self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashChain')] = FileList
+            #gDict[(self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashHexDigest')] = m.hexdigest()
+            gDict[(self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest')] = m.digest()
+
+    def GenMakeHash(self, gDict):
+        # Early exit if module or library has been hashed and is in memory
+        if (self.MetaFile.Path, self.Arch, 'MakeHashChain') in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch, 'MakeHashChain')]
+
+        if (self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest') not in gDict:
+            self.GenModuleFilesHash(gDict)
+        if (self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest') not in gDict:
+            self.GenMakeHeaderFilesHash(gDict)
+
+        # Initialze hash object
+        m = hashlib.md5()
+        MakeHashChain = []
+
+        # Add hash of makefile and dependency header files
+        if (self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest') in gDict:
+            m.update(gDict[(self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest')])
+            if (self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashChain') in gDict:
+                New = list(set(gDict[(self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashChain')]) - set(MakeHashChain))
+                New.sort(key=lambda x: str(x))
+                MakeHashChain += New
+            else:
+                EdkLogger.quiet("MakeHeaderFilesHashChain is missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+        else:
+            EdkLogger.quiet("MakeHeaderFilesHashDigest is missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+
+        # Add Library hash
+        if self.LibraryAutoGenList:
+            for Lib in sorted(self.LibraryAutoGenList, key=lambda x: x.Name):
+                if (Lib.MetaFile.Path, Lib.Arch, 'MakeHashChain') not in gDict:
+                    Lib.GenMakeHash(gDict)
+                if (Lib.MetaFile.Path, Lib.Arch, 'MakeHashDigest') not in gDict:
+                    print("MakeHashDigest is missing in global share data", self.MetaFile.Name, self.Arch)
+                    continue
+                m.update(gDict[(Lib.MetaFile.Path, Lib.Arch, 'MakeHashDigest')])
+                New = list(set(gDict[(Lib.MetaFile.Path, Lib.Arch, 'MakeHashChain')]) - set(MakeHashChain))
+                New.sort(key=lambda x: str(x))
+                MakeHashChain += New
+
+        # Add Module self
+        if (self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest') in gDict:
+            m.update(gDict[(self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest')])
+            if (self.MetaFile.Path, self.Arch, 'ModuleFilesChain') in gDict:
+                New = list(set(gDict[(self.MetaFile.Path, self.Arch, 'ModuleFilesChain')]) - set(MakeHashChain))
+                New.sort(key=lambda x: str(x))
+                MakeHashChain += New
+            else:
+                EdkLogger.quiet("%s[%s] ModuleFilesChain is missing in global dict" (self.MetaFile.Name, self.Arch))
+        else:
+            EdkLogger.quiet("%s[%s] ModuleFilesHashDigest is missing in global dict" (self.MetaFile.Name, self.Arch))
+
+        if (self.MetaFile.Path, self.Arch, 'MakeHashChain') not in gDict:
+            gDict[(self.MetaFile.Path, self.Arch, 'MakeHashDigest')] = m.digest()
+            gDict[(self.MetaFile.Path, self.Arch, 'MakeHashHexDigest')] = m.hexdigest()
+            gDict[(self.MetaFile.Path, self.Arch, 'MakeHashChain')] = MakeHashChain
+
+    ## Decide whether we can skip the left autogen and make process
+    def CanSkipbyPreMakefileCache(self, gDict):
+        if not GlobalData.gBinCacheSource:
+            return False
+
+        # If Module is binary, do not skip by cache
+        if self.IsBinaryModule:
+            return False
+
+        if (self.MetaFile.Path, self.Arch, 'CacheHit') in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')]
+
+        # .inc is contains binary information so do not skip by hash as well
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')] = False
+                #print("cache miss for having .inc file:", self.MetaFile.Path, self.Arch)
+                return False
+
+        # Get the module hash values from stored cache and currrent build
+        # then check whether cache hit based on the hash values
+        # if cache hit, restore all the files from cache
+        FileDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        HashFile = path.join(FileDir, self.Name + '.PreMakefileHashHexDigest')
+        if os.path.exists(HashFile):
+            f = open(HashFile, 'rb')
+            CacheHash = f.read()
+            f.close()
+            self.GenPreMakefileHash(gDict)
+            if (self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest') in gDict:
+                CurrentHash = gDict[(self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest')].encode('utf-8')
+                #print("CacheHash from file= ", CacheHash)
+                #print("CurrentHash= ", CurrentHash)
+                if CacheHash == CurrentHash:
+                    for root, dir, files in os.walk(FileDir):
+                        for f in files:
+                            if self.Name + '.PreMakefileHashHexDigest' in f:
+                                CopyFileOnChange(HashFile, self.BuildDir)
+                            else:
+                                File = path.join(root, f)
+                                sub_dir = os.path.relpath(File, FileDir)
+                                destination_file = os.path.join(self.OutputDir, sub_dir)
+                                destination_dir = os.path.dirname(destination_file)
+                                CreateDirectory(destination_dir)
+                                CopyFileOnChange(File, destination_dir)
+                    if self.Name == "PcdPeim" or self.Name == "PcdDxe":
+                        CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
+                    gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')] = True
+                    print("cache hit:", self.MetaFile.Path, self.Arch)
+                    #EdkLogger.quiet("cache hit: %s[%s]" % (self.MetaFile.Path, self.Arch))
+                    return True
+            else:
+                EdkLogger.quiet("PreMakefileHashHexDigestis missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+        else:
+            EdkLogger.quiet("Cannot find cached hash file: %s" % HashFile)
+
+        gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')] = False
+        print("cache miss:", self.MetaFile.Path, self.Arch)
+        return False
+
 
     ## Decide whether we can skip the ModuleAutoGen process
     def CanSkipbyHash(self):

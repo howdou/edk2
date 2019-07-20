@@ -119,3 +119,5 @@ gModuleBuildTracking = dict()
 # Top Dict:     Key: Arch Type              Value: Dictionary
 # Second Dict:  Key: Module\Library Name    Value: True\False
 gBuildHashSkipTracking = dict()
+
+gDict = dict()

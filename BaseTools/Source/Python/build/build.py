@@ -824,24 +824,24 @@ class Build():
             w.start()
         if PcdMaList is not None:
             for PcdMa in PcdMaList:
-                if GlobalData.gBinCacheSource:
-                    PcdMa.GenModuleFilesHash(share_data)
-                    PcdMa.GenPreMakefileHash(share_data)
-                    if PcdMa.CanSkipbyPreMakefileCache(share_data):
-                       continue
+                # if GlobalData.gBinCacheSource:
+                    # PcdMa.GenModuleFilesHash(share_data)
+                    # PcdMa.GenPreMakefileHash(share_data)
+                    # if PcdMa.CanSkipbyPreMakefileCache(share_data):
+                       # continue
                 PcdMa.CreateCodeFile(True, gDict=share_data)
                 PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]),gDict=share_data)
                 PcdMa.CreateAsBuiltInf()
         for w in auto_workers:
             w.join()
 
-        if PcdMaList is not None:
-            for PcdMa in PcdMaList:
-                if GlobalData.gBinCacheSource:
-                    PcdMa.GenMakeHeaderFilesHash(share_data)
-                    PcdMa.GenMakeHash(share_data)
-                    if PcdMa.CanSkipbyMakeCache(share_data):
-                        continue
+        # if PcdMaList is not None:
+            # for PcdMa in PcdMaList:
+                # if GlobalData.gBinCacheSource:
+                    # PcdMa.GenMakeHeaderFilesHash(share_data)
+                    # PcdMa.GenMakeHash(share_data)
+                    # if PcdMa.CanSkipbyMakeCache(share_data):
+                        # continue
 
         rt = self.AutoGenMgr.Status
         self.AutoGenMgr.kill()

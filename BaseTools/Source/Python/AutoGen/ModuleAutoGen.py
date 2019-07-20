@@ -2098,13 +2098,13 @@ class ModuleAutoGen(AutoGen):
         if self.IsBinaryModule:
             return False
 
-        if (self.MetaFile.Path, self.Arch, 'CacheHit') in gDict:
-            return gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')]
+        if (self.MetaFile.Path, self.Arch, 'PreMakeCacheHit') in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch, 'PreMakeCacheHit')]
 
         # .inc is contains binary information so do not skip by hash as well
         for f_ext in self.SourceFileList:
             if '.inc' in str(f_ext):
-                gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')] = False
+                gDict[(self.MetaFile.Path, self.Arch, 'PreMakeCacheHit')] = False
                 #print("cache miss for having .inc file:", self.MetaFile.Path, self.Arch)
                 return False
 
@@ -2136,8 +2136,8 @@ class ModuleAutoGen(AutoGen):
                                 CopyFileOnChange(File, destination_dir)
                     if self.Name == "PcdPeim" or self.Name == "PcdDxe":
                         CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
-                    gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')] = True
-                    print("cache hit:", self.MetaFile.Path, self.Arch)
+                    gDict[(self.MetaFile.Path, self.Arch, 'PreMakeCacheHit')] = True
+                    print("premake cache hit:", self.MetaFile.Path, self.Arch)
                     #EdkLogger.quiet("cache hit: %s[%s]" % (self.MetaFile.Path, self.Arch))
                     return True
             else:
@@ -2145,9 +2145,145 @@ class ModuleAutoGen(AutoGen):
         else:
             EdkLogger.quiet("Cannot find cached hash file: %s" % HashFile)
 
-        gDict[(self.MetaFile.Path, self.Arch, 'CacheHit')] = False
-        print("cache miss:", self.MetaFile.Path, self.Arch)
+        gDict[(self.MetaFile.Path, self.Arch, 'PreMakeCacheHit')] = False
+        #print("premake cache miss:", self.MetaFile.Path, self.Arch)
         return False
+
+
+    ## Decide whether we can skip the make process
+    def CanSkipbyMakeCache(self, gDict):
+        if not GlobalData.gBinCacheSource:
+            return False
+
+        # If Module is binary, do not skip by cache
+        if self.IsBinaryModule:
+            return False
+
+        if (self.MetaFile.Path, self.Arch, 'MakeCacheHit') in gDict:
+            return gDict[(self.MetaFile.Path, self.Arch, 'MakeCacheHit')]
+
+        # .inc is contains binary information so do not skip by hash as well
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                gDict[(self.MetaFile.Path, self.Arch, 'MakeCacheHit')] = False
+                #print("cache miss for having .inc file:", self.MetaFile.Path, self.Arch)
+                return False
+
+        # Get the module hash values from stored cache and currrent build
+        # then check whether cache hit based on the hash values
+        # if cache hit, restore all the files from cache
+        FileDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        HashFile = path.join(FileDir, self.Name + '.MakeHashHexDigest')
+        if os.path.exists(HashFile):
+            f = open(HashFile, 'rb')
+            CacheHash = f.read()
+            f.close()
+            self.GenMakeHash(gDict)
+            if (self.MetaFile.Path, self.Arch, 'MakeHashHexDigest') in gDict:
+                CurrentHash = gDict[(self.MetaFile.Path, self.Arch, 'MakeHashHexDigest')].encode('utf-8')
+                #print("CacheHash from file= ", CacheHash)
+                #print("CurrentHash= ", CurrentHash)
+                if CacheHash == CurrentHash:
+                    for root, dir, files in os.walk(FileDir):
+                        for f in files:
+                            if self.Name + '.MakeHashHexDigest' in f:
+                                CopyFileOnChange(HashFile, self.BuildDir)
+                            else:
+                                File = path.join(root, f)
+                                sub_dir = os.path.relpath(File, FileDir)
+                                destination_file = os.path.join(self.OutputDir, sub_dir)
+                                destination_dir = os.path.dirname(destination_file)
+                                CreateDirectory(destination_dir)
+                                CopyFileOnChange(File, destination_dir)
+                    if self.Name == "PcdPeim" or self.Name == "PcdDxe":
+                        CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
+                    gDict[(self.MetaFile.Path, self.Arch, 'MakeCacheHit')] = True
+                    print("makefile cache hit:", self.MetaFile.Path, self.Arch)
+                    #EdkLogger.quiet("cache hit: %s[%s]" % (self.MetaFile.Path, self.Arch))
+                    return True
+            else:
+                EdkLogger.quiet("MakeHashHexDigest missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+        else:
+            EdkLogger.quiet("Cannot find cached hash file: %s" % HashFile)
+
+        gDict[(self.MetaFile.Path, self.Arch, 'MakeCacheHit')] = False
+        print("makefile cache miss:", self.MetaFile.Path, self.Arch)
+        return False
+
+    ## Show the first file name which causes cache miss
+    def PrintFirstMakeCacheMissFile(self, gDict):
+        if not GlobalData.gBinCacheSource:
+            return False
+
+        # Only print cache miss file for the 'CacheHit'==False module
+        if (self.MetaFile.Path, self.Arch, 'MakeCacheHit') not in gDict:
+            return
+
+        if gDict[(self.MetaFile.Path, self.Arch, 'MakeCacheHit')]:
+            return
+
+        if (self.MetaFile.Path, self.Arch, 'MakeHashChain') not in gDict:
+            EdkLogger.quiet("MakeHashChain is missing for: %s[%s]" % (self.Name, self.Arch))
+            return
+
+        # Get the module hash values from stored cache and currrent build
+        # then check whether cache hit based on the hash values
+        # if cache hit, restore all the files from cache
+        FileDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        ListFile = path.join(FileDir, self.Name + '.MakeHashChain')
+        if os.path.exists(ListFile):
+            f = open(ListFile, 'r')
+            CachedList = json.load(f)
+            f.close()
+        else:
+            EdkLogger.quiet("Cannot find MakeHashChain file: %s" % ListFile)
+            return
+
+        CurrentList = gDict[(self.MetaFile.Path, self.Arch, 'MakeHashChain')]
+        for idx, (file, hash) in enumerate (CurrentList):
+            (filecached, hashcached) = CachedList[idx]
+            if file != filecached:
+                EdkLogger.quiet("%s[%s] first different file: %s" % (self.Name, self.Arch, file))
+                EdkLogger.quiet("the file in cache: %s" % filecached)
+                break
+            if hash != hashcached:
+                EdkLogger.quiet("%s[%s] first cache miss file: %s" % (self.Name, self.Arch, file))
+                EdkLogger.quiet("the hash in cache = %s, but current hash = %s" % (hashcached, hash))
+                break
+
+        return True
+
+    ## Decide whether we can skip the ModuleAutoGen process
+    def CanSkipbyCache(self, gDict):
+        # Hashing feature is off
+        if not GlobalData.gBinCacheSource:
+            return False
+
+        if self in GlobalData.gBuildHashSkipTracking:
+            return GlobalData.gBuildHashSkipTracking[self]
+
+        # If library or Module is binary do not skip by hash
+        if self.IsBinaryModule:
+            GlobalData.gBuildHashSkipTracking[self] = False
+            return False
+
+        # .inc is contains binary information so do not skip by hash as well
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                GlobalData.gBuildHashSkipTracking[self] = False
+                return False
+
+        if (self.MetaFile.Path, self.Arch, 'PreMakeCacheHit') in gDict:
+            if gDict[((self.MetaFile.Path, self.Arch, 'PreMakeCacheHit'))]:
+                GlobalData.gBuildHashSkipTracking[self] = True
+                return True
+
+        if (self.MetaFile.Path, self.Arch, 'MakeCacheHit') in gDict:
+            GlobalData.gBuildHashSkipTracking[self] = gDict[((self.MetaFile.Path, self.Arch, 'MakeCacheHit'))]
+        else:
+            GlobalData.gBuildHashSkipTracking[self] = False
+
+        return GlobalData.gBuildHashSkipTracking[self]
 
 
     ## Decide whether we can skip the ModuleAutoGen process
@@ -2155,10 +2291,6 @@ class ModuleAutoGen(AutoGen):
         # Hashing feature is off
         if not GlobalData.gUseHashCache:
             return False
-
-        # Initialize a dictionary for each arch type
-        if self.Arch not in GlobalData.gBuildHashSkipTracking:
-            GlobalData.gBuildHashSkipTracking[self.Arch] = dict()
 
         # If library or Module is binary do not skip by hash
         if self.IsBinaryModule:
@@ -2179,12 +2311,12 @@ class ModuleAutoGen(AutoGen):
             return False
 
         # Return a Boolean based on if can skip by hash, either from memory or from IO.
-        if self.Name not in GlobalData.gBuildHashSkipTracking[self.Arch]:
+        if self not in GlobalData.gBuildHashSkipTracking:
             # If hashes are the same, SaveFileOnChange() will return False.
-            GlobalData.gBuildHashSkipTracking[self.Arch][self.Name] = not SaveFileOnChange(HashFile, self.GenModuleHash(), True)
-            return GlobalData.gBuildHashSkipTracking[self.Arch][self.Name]
+            GlobalData.gBuildHashSkipTracking[self] = not SaveFileOnChange(HashFile, self.GenModuleHash(), True)
+            return GlobalData.gBuildHashSkipTracking[self]
         else:
-            return GlobalData.gBuildHashSkipTracking[self.Arch][self.Name]
+            return GlobalData.gBuildHashSkipTracking[self]
 
     ## Decide whether we can skip the ModuleAutoGen process
     #  If any source file is newer than the module than we cannot skip

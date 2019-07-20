@@ -198,8 +198,10 @@ class AutoGenWorkerInProcess(mp.Process):
                 if GlobalData.gBinCacheSource:
                     Ma.GenMakeHeaderFilesHash(self.share_data)
                     Ma.GenMakeHash(self.share_data)
-                    # if Ma.MakeHashHit(self.share_data):
-                        # return
+                    if Ma.CanSkipbyMakeCache(self.share_data):
+                        continue
+                    else:
+                        Ma.PrintFirstMakeCacheMissFile(self.share_data)
         except Empty:
             pass
         except:

@@ -162,6 +162,7 @@ class AutoGenWorkerInProcess(mp.Process):
             GlobalData.gDisableIncludePathCheck = False
             GlobalData.gFdfParser = self.data_pipe.Get("FdfParser")
             GlobalData.gDatabasePath = self.data_pipe.Get("DatabasePath")
+            GlobalData.gBinCacheSource = self.data_pipe.Get("BinCacheSource")
             module_count = 0
             FfsCmd = self.data_pipe.Get("FfsCommand")
             if FfsCmd is None:

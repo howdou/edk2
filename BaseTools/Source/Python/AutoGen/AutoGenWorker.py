@@ -163,6 +163,7 @@ class AutoGenWorkerInProcess(mp.Process):
             GlobalData.gFdfParser = self.data_pipe.Get("FdfParser")
             GlobalData.gDatabasePath = self.data_pipe.Get("DatabasePath")
             GlobalData.gBinCacheSource = self.data_pipe.Get("BinCacheSource")
+            GlobalData.gBinCacheDest = self.data_pipe.Get("BinCacheDest")
             module_count = 0
             FfsCmd = self.data_pipe.Get("FfsCommand")
             if FfsCmd is None:

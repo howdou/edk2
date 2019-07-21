@@ -1645,12 +1645,12 @@ class ModuleAutoGen(AutoGen):
         MakeHashChain = path.join(CacheDestDir, self.Name + ".MakeHashChain")
         # Simply check whether the file has already existed
         # Not check the HashChain file content same or not because it could be big
-        if os.path.exists(PreMakefileHashHexDigest):
-            EdkLogger.quiet("override PreMakefileHashHexDigest file in cache: %s" % PreMakefileHashHexDigest)
-        if os.path.exists(MakeHashHexDigest):
-            EdkLogger.quiet("override MakeHashHexDigest file in cache: %s" % MakeHashHexDigest)
-        if os.path.exists(MakeHashChain):
-            EdkLogger.quiet("override MakeHashChain file in cache: %s" % MakeHashChain)
+        # if os.path.exists(PreMakefileHashHexDigest):
+            # EdkLogger.quiet("override PreMakefileHashHexDigest file in cache: %s" % PreMakefileHashHexDigest)
+        # if os.path.exists(MakeHashHexDigest):
+            # EdkLogger.quiet("override MakeHashHexDigest file in cache: %s" % MakeHashHexDigest)
+        # if os.path.exists(MakeHashChain):
+            # EdkLogger.quiet("override MakeHashChain file in cache: %s" % MakeHashChain)
 
         # save the HashChainDict as json file
         CreateDirectory (CacheDestDir)

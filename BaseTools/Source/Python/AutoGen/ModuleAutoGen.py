@@ -1749,7 +1749,7 @@ class ModuleAutoGen(AutoGen):
 
 
         # Don't enable if hash feature enabled, CanSkip uses timestamps to determine build skipping
-        if not GlobalData.gUseHashCache and self.CanSkip():
+        if not GlobalData.gBinCacheSource and self.CanSkip():
             return
 
         if len(self.CustomMakefile) == 0:
@@ -1799,7 +1799,7 @@ class ModuleAutoGen(AutoGen):
 
 
         # Don't enable if hash feature enabled, CanSkip uses timestamps to determine build skipping
-        if not GlobalData.gUseHashCache and self.CanSkip():
+        if not GlobalData.gBinCacheSource and self.CanSkip():
             return
 
         AutoGenList = []
@@ -1994,7 +1994,8 @@ class ModuleAutoGen(AutoGen):
         if (self.MetaFile.Path, self.Arch, 'CreateMakeFileDone') not in gDict:
             if hasattr(GlobalData, 'FfsCmd'):
                 self.CreateMakeFile(GenFfsList=GlobalData.FfsCmd.get((self.MetaFile.File, self.Arch),[]), gDict=gDict)
-
+            else:
+                EdkLogger.quiet("No GenFfsList to call CreateMakeFile for %s[%s]" %(self.MetaFile.BaseName, self.Arch))
         DependencyFileSet = set()
         # Add Makefile
         if (self.MetaFile.Path, self.Arch, 'MakefilePath') in gDict:

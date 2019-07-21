@@ -2137,7 +2137,7 @@ class ModuleAutoGen(AutoGen):
                     if self.Name == "PcdPeim" or self.Name == "PcdDxe":
                         CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
                     gDict[(self.MetaFile.Path, self.Arch, 'PreMakeCacheHit')] = True
-                    print("premake cache hit:", self.MetaFile.Path, self.Arch)
+                    print("pre-makefile cache hit:", self.MetaFile.Path, self.Arch)
                     #EdkLogger.quiet("cache hit: %s[%s]" % (self.MetaFile.Path, self.Arch))
                     return True
             else:
@@ -2243,12 +2243,12 @@ class ModuleAutoGen(AutoGen):
         for idx, (file, hash) in enumerate (CurrentList):
             (filecached, hashcached) = CachedList[idx]
             if file != filecached:
-                EdkLogger.quiet("%s[%s] first different file: %s" % (self.Name, self.Arch, file))
+                EdkLogger.quiet("%s[%s] first different file name: %s" % (self.Name, self.Arch, file))
                 EdkLogger.quiet("the file in cache: %s" % filecached)
                 break
             if hash != hashcached:
-                EdkLogger.quiet("%s[%s] first cache miss file: %s" % (self.Name, self.Arch, file))
-                EdkLogger.quiet("the hash in cache = %s, but current hash = %s" % (hashcached, hash))
+                print(self.Name, [self.Arch], "first cache miss file: ", file)
+                #EdkLogger.quiet("the hash in cache = %s, but current hash = %s" % (hashcached, hash))
                 break
 
         return True

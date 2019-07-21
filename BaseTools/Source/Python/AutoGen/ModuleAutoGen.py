@@ -1798,8 +1798,8 @@ class ModuleAutoGen(AutoGen):
             return
 
 
-        # Don't enable if hash feature enabled, CanSkip uses timestamps to determine build skipping
-        if not GlobalData.gBinCacheSource and self.CanSkip():
+        # Don't enable if cache feature enabled, CanSkip uses timestamps to determine build skipping
+        if not GlobalData.gBinCacheSource and not GlobalData.gBinCacheDest and self.CanSkip():
             return
 
         AutoGenList = []

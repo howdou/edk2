@@ -2083,9 +2083,11 @@ class Build():
                     self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                     if not autogen_rt:
                         return
+
+                EdkLogger.quiet("Total cache hit driver num: %s, cache miss num: %s" % (len(set(self.HashSkipModules)), len(set(self.BuildModules))))
                 for Arch in Wa.ArchList:
                     MakeStart = time.time()
-                    for Ma in self.BuildModules:
+                    for Ma in set(self.BuildModules):
                         # Generate build task for the module
                         if not Ma.IsBinaryModule:
                             Bt = BuildTask.New(ModuleMakeUnit(Ma, Pa.BuildCommand,self.Target))

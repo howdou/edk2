@@ -1748,7 +1748,7 @@ class ModuleAutoGen(AutoGen):
         self.GenFfsList = GenFfsList
 
 
-        # Don't enable if hash feature enabled, CanSkip uses timestamps to determine build skipping
+        # Don't enable if cache feature enabled, CanSkip uses timestamps to determine build skipping
         if not GlobalData.gBinCacheSource and self.CanSkip():
             return
 
@@ -1946,6 +1946,10 @@ class ModuleAutoGen(AutoGen):
         if (self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest') in gDict:
             return gDict[(self.MetaFile.Path, self.Arch, 'PreMakefileHashHexDigest')]
 
+        # skip binary module
+        if self.IsBinaryModule:
+            return
+
         if (self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest') not in gDict:
             self.GenModuleFilesHash(gDict)
 
@@ -1988,6 +1992,10 @@ class ModuleAutoGen(AutoGen):
         # Early exit if module or library has been hashed and is in memory
         if (self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest') in gDict:
             return gDict[(self.MetaFile.Path, self.Arch, 'MakeHeaderFilesHashDigest')]
+
+        # skip binary module
+        if self.IsBinaryModule:
+            return
 
         if (self.MetaFile.Path, self.Arch, 'CreateCodeFileDone') not in gDict:
             self.CreateCodeFile(gDict=gDict)
@@ -2038,6 +2046,10 @@ class ModuleAutoGen(AutoGen):
         # Early exit if module or library has been hashed and is in memory
         if (self.MetaFile.Path, self.Arch, 'MakeHashChain') in gDict:
             return gDict[(self.MetaFile.Path, self.Arch, 'MakeHashChain')]
+
+        # skip binary module
+        if self.IsBinaryModule:
+            return
 
         if (self.MetaFile.Path, self.Arch, 'ModuleFilesHashDigest') not in gDict:
             self.GenModuleFilesHash(gDict)
@@ -2215,6 +2227,10 @@ class ModuleAutoGen(AutoGen):
     def PrintFirstMakeCacheMissFile(self, gDict):
         if not GlobalData.gBinCacheSource:
             return False
+
+        # skip binary module
+        if self.IsBinaryModule:
+            return
 
         # Only print cache miss file for the 'CacheHit'==False module
         if (self.MetaFile.Path, self.Arch, 'MakeCacheHit') not in gDict:

@@ -120,4 +120,5 @@ gModuleBuildTracking = dict()
 # Second Dict:  Key: Module\Library Name    Value: True\False
 gBuildHashSkipTracking = dict()
 
-gDict = dict()
+# Dictionary of build cache intermediate result and state
+gCacheIR = dict()

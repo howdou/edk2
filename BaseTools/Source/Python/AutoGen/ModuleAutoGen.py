@@ -1605,7 +1605,7 @@ class ModuleAutoGen(AutoGen):
         # if os.path.exists(HashFile):
             # CopyFileOnChange(HashFile, FileDir)
 
-        self.SaveHashChainFileToCache(GlobalData.gDict)
+        self.SaveHashChainFileToCache(GlobalData.gCacheIR)
 
         ModuleFile = path.join(self.OutputDir, self.Name + '.inf')
         if os.path.exists(ModuleFile):

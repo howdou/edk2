@@ -595,7 +595,7 @@ class BuildTask:
     #
     def AddDependency(self, Dependency):
         for Dep in Dependency:
-            if not Dep.BuildObject.IsBinaryModule and not Dep.BuildObject.CanSkipbyCache(GlobalData.gDict):
+            if not Dep.BuildObject.IsBinaryModule and not Dep.BuildObject.CanSkipbyCache(GlobalData.gCacheIR):
                 self.DependencyList.append(BuildTask.New(Dep))    # BuildTask list
 
     ## The thread wrapper of LaunchCommand function
@@ -809,8 +809,7 @@ class Build():
         self.AutoGenMgr = None
         EdkLogger.info("")
         os.chdir(self.WorkspaceDir)
-        self.share_data = Manager().dict()
-        GlobalData.gDict = self.share_data
+        GlobalData.gCacheIR = Manager().dict()
         self.log_q = log_q
     def StartAutoGen(self,mqueue, DataPipe,SkipAutoGen,PcdMaList,share_data):
         if SkipAutoGen:
@@ -1227,7 +1226,7 @@ class Build():
             self.Progress.Start("Generating makefile and code")
             data_pipe_file = os.path.join(AutoGenObject.BuildDir, "GlobalVar_%s_%s.bin" % (str(AutoGenObject.Guid),AutoGenObject.Arch))
             AutoGenObject.DataPipe.dump(data_pipe_file)
-            autogen_rt = self.StartAutoGen(mqueue, AutoGenObject.DataPipe, self.SkipAutoGen, PcdMaList,self.share_data)
+            autogen_rt = self.StartAutoGen(mqueue, AutoGenObject.DataPipe, self.SkipAutoGen, PcdMaList, GlobalData.gCacheIR)
             self.Progress.Stop("done!")
             return autogen_rt
         else:
@@ -2059,21 +2058,21 @@ class Build():
                     Pa.DataPipe.dump(data_pipe_file)
 
                     # Add Platform and Package level hash in share_data
-                    self.share_data[('PlatformHash')] = GlobalData.gPlatformHash
+                    GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
                     for PkgName in GlobalData.gPackageHash.keys():
-                        self.share_data[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
+                        GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
 
-                    autogen_rt = self.StartAutoGen(mqueue, Pa.DataPipe, self.SkipAutoGen, PcdMaList,self.share_data)
+                    autogen_rt = self.StartAutoGen(mqueue, Pa.DataPipe, self.SkipAutoGen, PcdMaList, GlobalData.gCacheIR)
 
                     if GlobalData.gBinCacheSource:
                         for Ma in TotalModules:
-                            if (Ma.MetaFile.Path, Ma.Arch, 'PreMakeCacheHit') in self.share_data:
-                                if self.share_data[((Ma.MetaFile.Path, Ma.Arch, 'PreMakeCacheHit'))]:
+                            if (Ma.MetaFile.Path, Ma.Arch, 'PreMakeCacheHit') in GlobalData.gCacheIR:
+                                if GlobalData.gCacheIR[((Ma.MetaFile.Path, Ma.Arch, 'PreMakeCacheHit'))]:
                                     self.HashSkipModules.append(Ma)
                                     continue
 
-                            if (Ma.MetaFile.Path, Ma.Arch, 'MakeCacheHit') in self.share_data:
-                                if self.share_data[((Ma.MetaFile.Path, Ma.Arch, 'MakeCacheHit'))]:
+                            if (Ma.MetaFile.Path, Ma.Arch, 'MakeCacheHit') in GlobalData.gCacheIR:
+                                if GlobalData.gCacheIR[((Ma.MetaFile.Path, Ma.Arch, 'MakeCacheHit'))]:
                                     self.HashSkipModules.append(Ma)
                                     continue
                             self.BuildModules.append(Ma)

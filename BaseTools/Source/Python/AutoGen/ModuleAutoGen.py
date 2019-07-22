@@ -1252,6 +1252,7 @@ class ModuleAutoGen(AutoGen):
         retVal = set()
         OutputDir = self.OutputDir.replace('\\', '/').strip('/')
         DebugDir = self.DebugDir.replace('\\', '/').strip('/')
+        FfsOutputDir = self.FfsOutputDir.replace('\\', '/').rstrip('/')
         for Item in self.CodaTargetList:
             File = Item.Target.Path.replace('\\', '/').strip('/').replace(DebugDir, '').replace(OutputDir, '').strip('/')
             retVal.add(File)
@@ -1265,6 +1266,11 @@ class ModuleAutoGen(AutoGen):
         for Root, Dirs, Files in os.walk(OutputDir):
             for File in Files:
                 if File.lower().endswith('.pdb'):
+                    retVal.add(File)
+
+        for Root, Dirs, Files in os.walk(FfsOutputDir):
+            for File in Files:
+                if File.lower().endswith('.ffs'):
                     retVal.add(File)
 
         return retVal
@@ -1597,8 +1603,17 @@ class ModuleAutoGen(AutoGen):
 
         self.IsAsBuiltInfCreated = True
 
+    def CacheCopyFile(self, OriginDir, CopyDir, File):
+        sub_dir = os.path.relpath(File, CopyDir)
+        destination_file = os.path.join(OriginDir, sub_dir)
+        destination_dir = os.path.dirname(destination_file)
+        CreateDirectory(destination_dir)
+        CopyFileOnChange(File, destination_dir)
+
     def CopyModuleToCache(self):
         FileDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        FfsDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, TAB_FV_DIRECTORY, "Ffs", self.Guid + self.Name)
+
         CreateDirectory (FileDir)
         # HashFile = path.join(self.BuildDir, self.Name + '.hash')
         # EdkLogger.quiet("CopyModuleToCache FileDir: %s", FileDir)
@@ -1617,13 +1632,15 @@ class ModuleAutoGen(AutoGen):
         for File in self.OutputFile:
             File = str(File)
             if not os.path.isabs(File):
-                File = os.path.join(self.OutputDir, File)
+                NewFile = os.path.join(self.OutputDir, File)
+                if not os.path.exists(NewFile):
+                    NewFile = os.path.join(self.FfsOutputDir, File)
+                File = NewFile
             if os.path.exists(File):
-                sub_dir = os.path.relpath(File, self.OutputDir)
-                destination_file = os.path.join(FileDir, sub_dir)
-                destination_dir = os.path.dirname(destination_file)
-                CreateDirectory(destination_dir)
-                CopyFileOnChange(File, destination_dir)
+                if File.endswith('.ffs'):
+                    self.CacheCopyFile(FfsDir, self.FfsOutputDir, File)
+                else:
+                    self.CacheCopyFile(FileDir, self.OutputDir, File)
 
     def SaveHashChainFileToCache(self, gDict):
         if not GlobalData.gBinCacheDest:
@@ -2189,6 +2206,7 @@ class ModuleAutoGen(AutoGen):
         # then check whether cache hit based on the hash values
         # if cache hit, restore all the files from cache
         FileDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        FfsDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, TAB_FV_DIRECTORY, "Ffs", self.Guid + self.Name)
         HashFile = path.join(FileDir, self.Name + '.PreMakefileHashHexDigest')
         if os.path.exists(HashFile):
             f = open(HashFile, 'rb')
@@ -2206,11 +2224,12 @@ class ModuleAutoGen(AutoGen):
                                 CopyFileOnChange(HashFile, self.BuildDir)
                             else:
                                 File = path.join(root, f)
-                                sub_dir = os.path.relpath(File, FileDir)
-                                destination_file = os.path.join(self.OutputDir, sub_dir)
-                                destination_dir = os.path.dirname(destination_file)
-                                CreateDirectory(destination_dir)
-                                CopyFileOnChange(File, destination_dir)
+                                self.CacheCopyFile(self.OutputDir, FileDir, File)
+                    if GlobalData.gEnableGenfdsMultiThread and os.path.exists(FfsDir):
+                        for root, dir, files in os.walk(FfsDir):
+                            for f in files:
+                                File = path.join(root, f)
+                                self.CacheCopyFile(self.FfsOutputDir, FfsDir, File)
                     if self.Name == "PcdPeim" or self.Name == "PcdDxe":
                         CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
                     with GlobalData.file_lock:
@@ -2259,6 +2278,7 @@ class ModuleAutoGen(AutoGen):
         # then check whether cache hit based on the hash values
         # if cache hit, restore all the files from cache
         FileDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
+        FfsDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, TAB_FV_DIRECTORY, "Ffs", self.Guid + self.Name)
         HashFile = path.join(FileDir, self.Name + '.MakeHashHexDigest')
         if os.path.exists(HashFile):
             f = open(HashFile, 'rb')
@@ -2276,11 +2296,12 @@ class ModuleAutoGen(AutoGen):
                                 CopyFileOnChange(HashFile, self.BuildDir)
                             else:
                                 File = path.join(root, f)
-                                sub_dir = os.path.relpath(File, FileDir)
-                                destination_file = os.path.join(self.OutputDir, sub_dir)
-                                destination_dir = os.path.dirname(destination_file)
-                                CreateDirectory(destination_dir)
-                                CopyFileOnChange(File, destination_dir)
+                                self.CacheCopyFile(self.OutputDir, FileDir, File)
+                    if GlobalData.gEnableGenfdsMultiThread and os.path.exists(FfsDir):
+                        for root, dir, files in os.walk(FfsDir):
+                            for f in files:
+                                File = path.join(root, f)
+                                self.CacheCopyFile(self.FfsOutputDir, FfsDir, File)
                     if self.Name == "PcdPeim" or self.Name == "PcdDxe":
                         CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
                     with GlobalData.file_lock:

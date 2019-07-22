@@ -817,6 +817,10 @@ class Build():
         feedback_q = mp.Queue()
         file_lock = mp.Lock()
         GlobalData.file_lock = file_lock
+        FfsCmd = DataPipe.Get("FfsCommand")
+        if FfsCmd is None:
+            FfsCmd = {}
+        GlobalData.FfsCmd = FfsCmd
         auto_workers = [AutoGenWorkerInProcess(mqueue,DataPipe.dump_file,feedback_q,file_lock,share_data,self.log_q) for _ in range(mp.cpu_count())]
         self.AutoGenMgr = AutoGenManager(auto_workers,feedback_q)
         self.AutoGenMgr.start()
@@ -832,6 +836,12 @@ class Build():
                 PcdMa.CreateCodeFile(True)
                 PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                 PcdMa.CreateAsBuiltInf()
+                if GlobalData.gBinCacheSource:
+                    PcdMa.GenMakeHeaderFilesHash(share_data)
+                    PcdMa.GenMakeHash(share_data)
+                    if PcdMa.CanSkipbyMakeCache(share_data):
+                        continue
+
         for w in auto_workers:
             w.join()
 

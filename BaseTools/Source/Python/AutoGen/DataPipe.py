@@ -155,3 +155,5 @@ class MemoryDataPipe(DataPipe):
         self.DataContainer = {"BinCacheSource":GlobalData.gBinCacheSource}
 
         self.DataContainer = {"BinCacheDest":GlobalData.gBinCacheDest}
+
+        self.DataContainer = {"CacheIR":GlobalData.gCacheIR}

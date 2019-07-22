@@ -164,10 +164,12 @@ class AutoGenWorkerInProcess(mp.Process):
             GlobalData.gDatabasePath = self.data_pipe.Get("DatabasePath")
             GlobalData.gBinCacheSource = self.data_pipe.Get("BinCacheSource")
             GlobalData.gBinCacheDest = self.data_pipe.Get("BinCacheDest")
+            GlobalData.gCacheIR = self.data_pipe.Get("CacheIR")
             module_count = 0
             FfsCmd = self.data_pipe.Get("FfsCommand")
             if FfsCmd is None:
                 FfsCmd = {}
+            GlobalData.FfsCmd = FfsCmd
             PlatformMetaFile = self.GetPlatformMetaFile(self.data_pipe.Get("P_Info").get("ActivePlatform"),
                                              self.data_pipe.Get("P_Info").get("WorkspaceDir"))
             while not self.module_queue.empty():
@@ -188,22 +190,21 @@ class AutoGenWorkerInProcess(mp.Process):
                 Ma = ModuleAutoGen(self.Wa,module_metafile,target,toolchain,arch,PlatformMetaFile,self.data_pipe)
                 Ma.IsLibrary = IsLib
                 if GlobalData.gBinCacheSource:
-                    Ma.GenModuleFilesHash(self.share_data)
-                    Ma.GenPreMakefileHash(self.share_data)
-                    if Ma.CanSkipbyPreMakefileCache(self.share_data):
+                    Ma.GenModuleFilesHash(GlobalData.gCacheIR)
+                    Ma.GenPreMakefileHash(GlobalData.gCacheIR)
+                    if Ma.CanSkipbyPreMakefileCache(GlobalData.gCacheIR):
                        continue
 
-                Ma.CreateCodeFile(gDict=self.share_data)
-                GlobalData.FfsCmd = FfsCmd
-                Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]), gDict=self.share_data)
+                Ma.CreateCodeFile()
+                Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
 
                 if GlobalData.gBinCacheSource:
-                    Ma.GenMakeHeaderFilesHash(self.share_data)
-                    Ma.GenMakeHash(self.share_data)
-                    if Ma.CanSkipbyMakeCache(self.share_data):
+                    Ma.GenMakeHeaderFilesHash(GlobalData.gCacheIR)
+                    Ma.GenMakeHash(GlobalData.gCacheIR)
+                    if Ma.CanSkipbyMakeCache(GlobalData.gCacheIR):
                         continue
                     else:
-                        Ma.PrintFirstMakeCacheMissFile(self.share_data)
+                        Ma.PrintFirstMakeCacheMissFile(GlobalData.gCacheIR)
         except Empty:
             pass
         except:

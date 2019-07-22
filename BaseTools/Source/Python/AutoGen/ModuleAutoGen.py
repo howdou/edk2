@@ -1717,7 +1717,8 @@ class ModuleAutoGen(AutoGen):
     #                                       dependent libraries will be created
     #
     @cached_class_function
-    def CreateMakeFile(self, CreateLibraryMakeFile=True, GenFfsList = [], gDict= dict()):
+    def CreateMakeFile(self, CreateLibraryMakeFile=True, GenFfsList = []):
+        gDict = GlobalData.gCacheIR
         if (self.MetaFile.Path, self.Arch, 'CreateMakeFileDone') in gDict:
             return
 
@@ -1782,9 +1783,11 @@ class ModuleAutoGen(AutoGen):
     #   @param      CreateLibraryCodeFile   Flag indicating if or not the code of
     #                                       dependent libraries will be created
     #
-    def CreateCodeFile(self, CreateLibraryCodeFile=True, gDict=dict()):
+    def CreateCodeFile(self, CreateLibraryCodeFile=True):
         if self.IsCodeFileCreated:
             return
+
+        gDict = GlobalData.gCacheIR
         if (self.MetaFile.Path, self.Arch, 'CreateCodeFileDone') in gDict:
             return
 
@@ -1998,10 +2001,10 @@ class ModuleAutoGen(AutoGen):
             return
 
         if (self.MetaFile.Path, self.Arch, 'CreateCodeFileDone') not in gDict:
-            self.CreateCodeFile(gDict=gDict)
+            self.CreateCodeFile()
         if (self.MetaFile.Path, self.Arch, 'CreateMakeFileDone') not in gDict:
             if hasattr(GlobalData, 'FfsCmd'):
-                self.CreateMakeFile(GenFfsList=GlobalData.FfsCmd.get((self.MetaFile.File, self.Arch),[]), gDict=gDict)
+                self.CreateMakeFile(GenFfsList=GlobalData.FfsCmd.get((self.MetaFile.File, self.Arch),[]))
             else:
                 EdkLogger.quiet("No GenFfsList to call CreateMakeFile for %s[%s]" %(self.MetaFile.BaseName, self.Arch))
         DependencyFileSet = set()

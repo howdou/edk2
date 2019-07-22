@@ -828,8 +828,8 @@ class Build():
                     PcdMa.GenPreMakefileHash(share_data)
                     if PcdMa.CanSkipbyPreMakefileCache(share_data):
                        continue
-                PcdMa.CreateCodeFile(True, gDict=share_data)
-                PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]),gDict=share_data)
+                PcdMa.CreateCodeFile(True)
+                PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                 PcdMa.CreateAsBuiltInf()
         for w in auto_workers:
             w.join()

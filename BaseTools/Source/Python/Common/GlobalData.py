@@ -121,4 +121,4 @@ gModuleBuildTracking = dict()
 gBuildHashSkipTracking = dict()
 
 # Dictionary of build cache intermediate result and state
-gCacheIR = dict()
+gCacheIR = None

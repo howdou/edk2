@@ -2067,13 +2067,13 @@ class Build():
 
                     if GlobalData.gBinCacheSource:
                         for Ma in TotalModules:
-                            if (Ma.MetaFile.Path, Ma.Arch, 'PreMakeCacheHit') in GlobalData.gCacheIR:
-                                if GlobalData.gCacheIR[((Ma.MetaFile.Path, Ma.Arch, 'PreMakeCacheHit'))]:
+                            if (Ma.MetaFile.Path, Ma.Arch) in GlobalData.gCacheIR and \
+                                GlobalData.gCacheIR[(Ma.MetaFile.Path, Ma.Arch)].PreMakeCacheHit:
                                     self.HashSkipModules.append(Ma)
                                     continue
 
-                            if (Ma.MetaFile.Path, Ma.Arch, 'MakeCacheHit') in GlobalData.gCacheIR:
-                                if GlobalData.gCacheIR[((Ma.MetaFile.Path, Ma.Arch, 'MakeCacheHit'))]:
+                            if (Ma.MetaFile.Path, Ma.Arch) in GlobalData.gCacheIR and \
+                                GlobalData.gCacheIR[(Ma.MetaFile.Path, Ma.Arch)].MakeCacheHit:
                                     self.HashSkipModules.append(Ma)
                                     continue
                             self.BuildModules.append(Ma)

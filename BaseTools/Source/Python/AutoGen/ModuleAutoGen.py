@@ -1649,14 +1649,14 @@ class ModuleAutoGen(AutoGen):
         self.GenPreMakefileHash(gDict)
         if not (self.MetaFile.Path, self.Arch) in gDict or \
            not gDict[(self.MetaFile.Path, self.Arch)].PreMakefileHashHexDigest:
-            EdkLogger.quiet("Cannot generate PreMakefileHash for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
+            EdkLogger.quiet("[cache warning]: Cannot generate PreMakefileHash for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
             return False
 
         self.GenMakeHash(gDict)
         if not (self.MetaFile.Path, self.Arch) in gDict or \
            not gDict[(self.MetaFile.Path, self.Arch)].MakeHashChain or \
            not gDict[(self.MetaFile.Path, self.Arch)].MakeHashHexDigest:
-            EdkLogger.quiet("Cannot generate MakeHashChain for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
+            EdkLogger.quiet("[cache warning]: Cannot generate MakeHashChain for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
             return False
 
         # save the hash chain list as cache file
@@ -1679,14 +1679,14 @@ class ModuleAutoGen(AutoGen):
             Hash = gDict[(self.MetaFile.Path, self.Arch)].PreMakefileHashHexDigest.encode('utf-8')
             SaveFileOnChange(PreMakefileHashHexDigest, Hash, True)
         except:
-            EdkLogger.quiet("fail to save PreMakefileHashHexDigest file in cache: %s" % PreMakefileHashHexDigest)
+            EdkLogger.quiet("[cache warning]: fail to save PreMakefileHashHexDigest file in cache: %s" % PreMakefileHashHexDigest)
             return False
 
         try:
             Hash = gDict[(self.MetaFile.Path, self.Arch)].MakeHashHexDigest.encode('utf-8')
             SaveFileOnChange(MakeHashHexDigest, Hash, True)
         except:
-            EdkLogger.quiet("fail to save MakeHashHexDigest file in cache: %s" % MakeHashHexDigest)
+            EdkLogger.quiet("[cache warning]: fail to save MakeHashHexDigest file in cache: %s" % MakeHashHexDigest)
             return False
 
         try:
@@ -1694,7 +1694,7 @@ class ModuleAutoGen(AutoGen):
                 json.dump(gDict[(self.MetaFile.Path, self.Arch)].MakeHashChain, f, indent=2)
                 f.close()
         except:
-            EdkLogger.quiet("fail to save MakeHashChain file in cache: %s" % MakeHashChain)
+            EdkLogger.quiet("[cache warning]: fail to save MakeHashChain file in cache: %s" % MakeHashChain)
             return False
 
         return True
@@ -1975,7 +1975,7 @@ class ModuleAutoGen(AutoGen):
         m = hashlib.md5()
         for File in sorted(DependencyFileSet, key=lambda x: str(x)):
             if not os.path.exists(str(File)):
-                EdkLogger.quiet("header file: %s is missing for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
+                EdkLogger.quiet("[cache warning]: header file %s is missing for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
                 continue
             f = open(str(File), 'rb')
             Content = f.read()
@@ -2016,7 +2016,7 @@ class ModuleAutoGen(AutoGen):
 
         if not (self.MetaFile.Path, self.Arch) in gDict or \
            not gDict[(self.MetaFile.Path, self.Arch)].ModuleFilesHashDigest:
-           EdkLogger.quiet("Cannot generate ModuleFilesHashDigest for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
+           EdkLogger.quiet("[cache warning]: Cannot generate ModuleFilesHashDigest for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
            return
 
         # Initialze hash object
@@ -2026,7 +2026,7 @@ class ModuleAutoGen(AutoGen):
         if ('PlatformHash') in gDict:
             m.update(gDict[('PlatformHash')].encode('utf-8'))
         else:
-            EdkLogger.quiet("PlatformHash is missing in global dict")
+            EdkLogger.quiet("[cache warning]: PlatformHash is missing")
 
         # Add Package level hash
         if self.DependentPackageList:
@@ -2034,7 +2034,7 @@ class ModuleAutoGen(AutoGen):
                 if (Pkg.PackageName, 'PackageHash') in gDict:
                     m.update(gDict[(Pkg.PackageName, 'PackageHash')].encode('utf-8'))
                 else:
-                    EdkLogger.quiet("%s PackageHash needed by %s[%s] is missing in global dict" %(Pkg.PackageName, self.MetaFile.Name, self.Arch))
+                    EdkLogger.quiet("[cache warning]: %s PackageHash needed by %s[%s] is missing" %(Pkg.PackageName, self.MetaFile.Name, self.Arch))
 
         # Add Library hash
         if self.LibraryAutoGenList:
@@ -2074,7 +2074,7 @@ class ModuleAutoGen(AutoGen):
         if not (self.MetaFile.Path, self.Arch) in gDict or \
            not gDict[(self.MetaFile.Path, self.Arch)].CreateCodeFileDone or \
            not gDict[(self.MetaFile.Path, self.Arch)].CreateMakeFileDone:
-           EdkLogger.quiet("Cannot create CodeFile or Makefile for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
+           EdkLogger.quiet("[cache warning]: Cannot create CodeFile or Makefile for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
            return
 
         DependencyFileSet = set()
@@ -2082,14 +2082,14 @@ class ModuleAutoGen(AutoGen):
         if gDict[(self.MetaFile.Path, self.Arch)].MakefilePath:
             DependencyFileSet.add(gDict[(self.MetaFile.Path, self.Arch)].MakefilePath)
         else:
-            EdkLogger.quiet("makefile is missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+            EdkLogger.quiet("[cache warning]: makefile is missing for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
 
         # Add header files
         if gDict[(self.MetaFile.Path, self.Arch)].DependencyHeaderFileSet:
             for File in gDict[(self.MetaFile.Path, self.Arch)].DependencyHeaderFileSet:
                 DependencyFileSet.add(File)
         else:
-            EdkLogger.quiet("DependencyHeaderFileSet is missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+            EdkLogger.quiet("[cache warning]: No dependency header found for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
 
         # Add AutoGen files
         if self.AutoGenFileList:
@@ -2102,7 +2102,7 @@ class ModuleAutoGen(AutoGen):
         m = hashlib.md5()
         for File in sorted(DependencyFileSet, key=lambda x: str(x)):
             if not os.path.exists(str(File)):
-                EdkLogger.quiet("header file: %s doesn't exist for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
+                EdkLogger.quiet("[cache warning]: header file: %s doesn't exist for module: %s[%s]" % (File, self.MetaFile.BaseName, self.Arch))
                 continue
             f = open(str(File), 'rb')
             Content = f.read()
@@ -2139,7 +2139,7 @@ class ModuleAutoGen(AutoGen):
            not gDict[(self.MetaFile.Path, self.Arch)].ModuleFilesChain or \
            not gDict[(self.MetaFile.Path, self.Arch)].MakeHeaderFilesHashDigest or \
            not gDict[(self.MetaFile.Path, self.Arch)].MakeHeaderFilesHashChain:
-           EdkLogger.quiet("Cannot generate ModuleFilesHash or MakeHeaderFilesHash for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
+           EdkLogger.quiet("[cache warning]: Cannot generate ModuleFilesHash or MakeHeaderFilesHash for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
            return
 
         # Initialze hash object
@@ -2236,13 +2236,13 @@ class ModuleAutoGen(AutoGen):
                         IR = gDict[(self.MetaFile.Path, self.Arch)]
                         IR.PreMakeCacheHit = True
                         gDict[(self.MetaFile.Path, self.Arch)] = IR
-                    print("pre-makefile cache hit:", self.MetaFile.Path, self.Arch)
+                    print("[cache hit]: checkpoint_PreMakefile:", self.MetaFile.Path, self.Arch)
                     #EdkLogger.quiet("cache hit: %s[%s]" % (self.MetaFile.Path, self.Arch))
                     return True
             else:
-                EdkLogger.quiet("PreMakefileHashHexDigest is missing for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
+                EdkLogger.quiet("[cache warning]: PreMakefileHashHexDigest is missing for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
         else:
-            EdkLogger.quiet("Cannot find cached hash file: %s" % HashFile)
+            EdkLogger.quiet("[cache warning]: Cannot find cached hash file: %s" % HashFile)
 
         with GlobalData.file_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
@@ -2308,19 +2308,19 @@ class ModuleAutoGen(AutoGen):
                         IR = gDict[(self.MetaFile.Path, self.Arch)]
                         IR.MakeCacheHit = True
                         gDict[(self.MetaFile.Path, self.Arch)] = IR
-                    print("makefile cache hit:", self.MetaFile.Path, self.Arch)
+                    print("[cache hit]: checkpoint_Makefile:", self.MetaFile.Path, self.Arch)
                     #EdkLogger.quiet("cache hit: %s[%s]" % (self.MetaFile.Path, self.Arch))
                     return True
             else:
-                EdkLogger.quiet("MakeHashHexDigest missing for module %s[%s] in global dict" %(self.MetaFile.BaseName, self.Arch))
+                EdkLogger.quiet("[cache warning]: MakeHashHexDigest missing for module %s[%s]" %(self.MetaFile.BaseName, self.Arch))
         else:
-            EdkLogger.quiet("Cannot find cached hash file: %s" % HashFile)
+            EdkLogger.quiet("[cache warning]: Cannot find cached hash file: %s" % HashFile)
 
         with GlobalData.file_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
             IR.MakeCacheHit = False
             gDict[(self.MetaFile.Path, self.Arch)] = IR
-        print("makefile cache miss:", self.MetaFile.Path, self.Arch)
+        print("[cache miss]: checkpoint_Makefile:", self.MetaFile.Path, self.Arch)
         return False
 
     ## Show the first file name which causes cache miss
@@ -2340,7 +2340,7 @@ class ModuleAutoGen(AutoGen):
             return
 
         if not gDict[(self.MetaFile.Path, self.Arch)].MakeHashChain:
-            EdkLogger.quiet("MakeHashChain is missing for: %s[%s]" % (self.Name, self.Arch))
+            EdkLogger.quiet("[cache warning]: MakeHashChain is missing for: %s[%s]" % (self.Name, self.Arch))
             return
 
         # Get the module hash values from stored cache and currrent build
@@ -2353,19 +2353,19 @@ class ModuleAutoGen(AutoGen):
             CachedList = json.load(f)
             f.close()
         else:
-            EdkLogger.quiet("Cannot find MakeHashChain file: %s" % ListFile)
+            EdkLogger.quiet("[cache warning]: Cannot find MakeHashChain file: %s" % ListFile)
             return
 
         CurrentList = gDict[(self.MetaFile.Path, self.Arch)].MakeHashChain
         for idx, (file, hash) in enumerate (CurrentList):
             (filecached, hashcached) = CachedList[idx]
             if file != filecached:
-                EdkLogger.quiet("%s[%s] first different file name: %s" % (self.Name, self.Arch, file))
-                EdkLogger.quiet("the file in cache: %s" % filecached)
+                #EdkLogger.quiet("[cache insight]: first different file in %s[%s] is %s, the cached one is %s" % (self.MetaFile.Path, self.Arch, file, filecached))
+                print("[cache insight]: first different file in", self.MetaFile.Path, self.Arch, "is", file, "the cached one is", filecached)
                 break
             if hash != hashcached:
-                print(self.Name, [self.Arch], "first cache miss file: ", file)
-                #EdkLogger.quiet("the hash in cache = %s, but current hash = %s" % (hashcached, hash))
+                #EdkLogger.quiet("[cache insight]: first cache miss file in %s[%s] is %s" % (self.MetaFile.Path, self.Arch, file))
+                print("[cache insight]: first cache miss file in", self.MetaFile.Path, self.Arch, "is", file)
                 break
 
         return True

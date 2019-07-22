@@ -165,6 +165,7 @@ class AutoGenWorkerInProcess(mp.Process):
             GlobalData.gBinCacheSource = self.data_pipe.Get("BinCacheSource")
             GlobalData.gBinCacheDest = self.data_pipe.Get("BinCacheDest")
             GlobalData.gCacheIR = self.data_pipe.Get("CacheIR")
+            GlobalData.file_lock = self.file_lock
             module_count = 0
             FfsCmd = self.data_pipe.Get("FfsCommand")
             if FfsCmd is None:

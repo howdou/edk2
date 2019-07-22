@@ -122,3 +122,5 @@ gBuildHashSkipTracking = dict()
 
 # Dictionary of build cache intermediate result and state
 gCacheIR = None
+
+file_lock = None

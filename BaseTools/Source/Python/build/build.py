@@ -816,6 +816,7 @@ class Build():
             return
         feedback_q = mp.Queue()
         file_lock = mp.Lock()
+        GlobalData.file_lock = file_lock
         auto_workers = [AutoGenWorkerInProcess(mqueue,DataPipe.dump_file,feedback_q,file_lock,share_data,self.log_q) for _ in range(mp.cpu_count())]
         self.AutoGenMgr = AutoGenManager(auto_workers,feedback_q)
         self.AutoGenMgr.start()

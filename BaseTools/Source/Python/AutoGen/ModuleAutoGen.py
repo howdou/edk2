@@ -1697,6 +1697,14 @@ class ModuleAutoGen(AutoGen):
             EdkLogger.quiet("[cache warning]: fail to save MakeHashChain file in cache: %s" % MakeHashChain)
             return False
 
+        # save the autogenfile and makefile for debug useage
+        CacheDebugDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, "CacheDebug")
+        CreateDirectory (CacheDebugDir)
+        CopyFileOnChange(gDict[(self.MetaFile.Path, self.Arch)].MakefilePath, CacheDebugDir)
+        if gDict[(self.MetaFile.Path, self.Arch)].AutoGenFileList:
+            for File in gDict[(self.MetaFile.Path, self.Arch)].AutoGenFileList:
+                CopyFileOnChange(str(File), CacheDebugDir)
+
         return True
 
     def AttemptModuleCacheCopy(self):
@@ -2112,6 +2120,7 @@ class ModuleAutoGen(AutoGen):
 
         with GlobalData.file_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
+            IR.AutoGenFileList = self.AutoGenFileList.keys()
             IR.MakeHeaderFilesHashChain = FileList
             IR.MakeHeaderFilesHashDigest = m.digest()
             gDict[(self.MetaFile.Path, self.Arch)] = IR

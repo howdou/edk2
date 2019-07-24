@@ -17,6 +17,7 @@ class ModuleBuildCacheIR():
         self.CreateCodeFileDone = False
         self.CreateMakeFileDone = False
         self.MakefilePath = None
+        self.AutoGenFileList = None
         self.DependencyHeaderFileSet = None
         self.MakeHeaderFilesHashChain = None
         self.MakeHeaderFilesHashDigest = None

@@ -2095,7 +2095,19 @@ class Build():
                     if not autogen_rt:
                         return
 
-                EdkLogger.quiet("Total cache hit driver num: %s, cache miss num: %s" % (len(set(self.HashSkipModules)), len(set(self.BuildModules))))
+                EdkLogger.quiet("Total cache hit driver num: %s, cache miss driver num: %s" % (len(set(self.HashSkipModules)), len(set(self.BuildModules))))
+                CacheHitMa = set()
+                CacheNotHitMa = set()
+                for IR in GlobalData.gCacheIR:
+                    if 'PlatformHash' in IR or 'PackageHash' in IR:
+                        continue
+                    if GlobalData.gCacheIR[IR].PreMakeCacheHit or GlobalData.gCacheIR[IR].MakeCacheHit:
+                        CacheHitMa.add(IR)
+                    else:
+                        # There might be binary module or module which has .inc files, not count for cache miss
+                        CacheNotHitMa.add(IR)
+                        #print (IR)
+                EdkLogger.quiet("Total module num: %s, cache hit module num: %s" % (len(CacheHitMa)+len(CacheNotHitMa), len(CacheHitMa)))
                 for Arch in Wa.ArchList:
                     MakeStart = time.time()
                     for Ma in set(self.BuildModules):

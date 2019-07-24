@@ -2098,7 +2098,7 @@ class Build():
                 EdkLogger.quiet("Total cache hit driver num: %s, cache miss driver num: %s" % (len(set(self.HashSkipModules)), len(set(self.BuildModules))))
                 CacheHitMa = set()
                 CacheNotHitMa = set()
-                for IR in GlobalData.gCacheIR:
+                for IR in GlobalData.gCacheIR.keys():
                     if 'PlatformHash' in IR or 'PackageHash' in IR:
                         continue
                     if GlobalData.gCacheIR[IR].PreMakeCacheHit or GlobalData.gCacheIR[IR].MakeCacheHit:

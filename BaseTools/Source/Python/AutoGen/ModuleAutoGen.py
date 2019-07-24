@@ -1698,7 +1698,7 @@ class ModuleAutoGen(AutoGen):
             return False
 
         # save the autogenfile and makefile for debug useage
-        CacheDebugDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, "CacheDebug")
+        CacheDebugDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName + "_CacheDebug")
         CreateDirectory (CacheDebugDir)
         CopyFileOnChange(gDict[(self.MetaFile.Path, self.Arch)].MakefilePath, CacheDebugDir)
         if gDict[(self.MetaFile.Path, self.Arch)].AutoGenFileList:

@@ -836,11 +836,11 @@ class Build():
                 PcdMa.CreateCodeFile(True)
                 PcdMa.CreateMakeFile(GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                 PcdMa.CreateAsBuiltInf()
-                if GlobalData.gBinCacheSource:
-                    PcdMa.GenMakeHeaderFilesHash(share_data)
-                    PcdMa.GenMakeHash(share_data)
-                    if PcdMa.CanSkipbyMakeCache(share_data):
-                        continue
+                # if GlobalData.gBinCacheSource:
+                    # PcdMa.GenMakeHeaderFilesHash(share_data)
+                    # PcdMa.GenMakeHash(share_data)
+                    # if PcdMa.CanSkipbyMakeCache(share_data):
+                        # continue
 
         for w in auto_workers:
             w.join()

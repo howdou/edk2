@@ -180,6 +180,11 @@ class AutoGenWorkerInProcess(mp.Process):
             GlobalData.gDisableIncludePathCheck = False
             GlobalData.gFdfParser = self.data_pipe.Get("FdfParser")
             GlobalData.gDatabasePath = self.data_pipe.Get("DatabasePath")
+            GlobalData.gBinCacheSource = self.data_pipe.Get("BinCacheSource")
+            GlobalData.gBinCacheDest = self.data_pipe.Get("BinCacheDest")
+            GlobalData.gCacheIR = self.data_pipe.Get("CacheIR")
+            GlobalData.gEnableGenfdsMultiThread = self.data_pipe.Get("EnableGenfdsMultiThread")
+            GlobalData.file_lock = self.file_lock
             pcd_from_build_option = []
             for pcd_tuple in self.data_pipe.Get("BuildOptPcd"):
                 pcd_id = ".".join((pcd_tuple[0],pcd_tuple[1]))
@@ -191,10 +196,13 @@ class AutoGenWorkerInProcess(mp.Process):
             FfsCmd = self.data_pipe.Get("FfsCommand")
             if FfsCmd is None:
                 FfsCmd = {}
+            GlobalData.FfsCmd = FfsCmd
             PlatformMetaFile = self.GetPlatformMetaFile(self.data_pipe.Get("P_Info").get("ActivePlatform"),
                                              self.data_pipe.Get("P_Info").get("WorkspaceDir"))
             libConstPcd = self.data_pipe.Get("LibConstPcd")
             Refes = self.data_pipe.Get("REFS")
+            GlobalData.libConstPcd = libConstPcd
+            GlobalData.Refes = Refes
             while not self.module_queue.empty():
                 if self.error_event.is_set():
                     break
@@ -219,9 +227,23 @@ class AutoGenWorkerInProcess(mp.Process):
                         Ma.ConstPcd = libConstPcd[(Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path)]
                     if (Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path) in Refes:
                         Ma.ReferenceModules = Refes[(Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path)]
+                if GlobalData.gBinCacheSource:
+                    Ma.GenModuleFilesHash(GlobalData.gCacheIR)
+                    Ma.GenPreMakefileHash(GlobalData.gCacheIR)
+                    if Ma.CanSkipbyPreMakefileCache(GlobalData.gCacheIR):
+                       continue
+
                 Ma.CreateCodeFile()
                 Ma.CreateMakeFile(GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
                 Ma.CreateAsBuiltInf()
+
+                if GlobalData.gBinCacheSource:
+                    Ma.GenMakeHeaderFilesHash(GlobalData.gCacheIR)
+                    Ma.GenMakeHash(GlobalData.gCacheIR)
+                    if Ma.CanSkipbyMakeCache(GlobalData.gCacheIR):
+                        continue
+                    else:
+                        Ma.PrintFirstMakeCacheMissFile(GlobalData.gCacheIR)
         except Empty:
             pass
         except:

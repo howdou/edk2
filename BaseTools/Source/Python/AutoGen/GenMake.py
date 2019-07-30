@@ -906,6 +906,11 @@ cleanlib:
                                     self._AutoGenObject.IncludePathList + self._AutoGenObject.BuildOptionIncPathList
                                     )
 
+        self.DependencyHeaderFileSet = set()
+        if FileDependencyDict:
+            for Dependency in FileDependencyDict.values():
+                self.DependencyHeaderFileSet.update(set(Dependency))
+
         # Check if header files are listed in metafile
         # Get a list of unique module header source files from MetaFile
         headerFilesInMetaFileSet = set()
@@ -935,16 +940,12 @@ cleanlib:
                     continue
                 headerFileDependencySet.add(aFileName)
 
-        # Ensure that gModuleBuildTracking has been initialized per architecture
-        if self._AutoGenObject.Arch not in GlobalData.gModuleBuildTracking:
-            GlobalData.gModuleBuildTracking[self._AutoGenObject.Arch] = dict()
-
         # Check if a module dependency header file is missing from the module's MetaFile
         for aFile in headerFileDependencySet:
             if aFile in headerFilesInMetaFileSet:
                 continue
             if GlobalData.gUseHashCache:
-                GlobalData.gModuleBuildTracking[self._AutoGenObject.Arch][self._AutoGenObject] = 'FAIL_METAFILE'
+                GlobalData.gModuleBuildTracking[self._AutoGenObject] = 'FAIL_METAFILE'
             EdkLogger.warn("build","Module MetaFile [Sources] is missing local header!",
                         ExtraData = "Local Header: " + aFile + " not found in " + self._AutoGenObject.MetaFile.Path
                         )
@@ -1026,6 +1027,7 @@ cleanlib:
                         self.FileListMacros[T.FileListMacro].append(NewFile)
                     else:
                         Deps.append(NewFile)
+
                 for key in self.FileListMacros:
                     self.FileListMacros[key].sort()
                 # Use file list macro as dependency
@@ -1096,7 +1098,7 @@ cleanlib:
     ## For creating makefile targets for dependent libraries
     def ProcessDependentLibrary(self):
         for LibraryAutoGen in self._AutoGenObject.LibraryAutoGenList:
-            if not LibraryAutoGen.IsBinaryModule and not LibraryAutoGen.CanSkipbyHash():
+            if not LibraryAutoGen.IsBinaryModule:
                 self.LibraryBuildDirectoryList.append(self.PlaceMacro(LibraryAutoGen.BuildDir, self.Macros))
 
     ## Return a list containing source file's dependencies
@@ -1599,7 +1601,7 @@ cleanlib:
     def GetLibraryBuildDirectoryList(self):
         DirList = []
         for LibraryAutoGen in self._AutoGenObject.LibraryAutoGenList:
-            if not LibraryAutoGen.IsBinaryModule and not LibraryAutoGen.CanSkipbyHash():
+            if not LibraryAutoGen.IsBinaryModule:
                 DirList.append(os.path.join(self._AutoGenObject.BuildDir, LibraryAutoGen.BuildDir))
         return DirList
 
@@ -1735,7 +1737,7 @@ class TopLevelMakefile(BuildFile):
     def GetLibraryBuildDirectoryList(self):
         DirList = []
         for LibraryAutoGen in self._AutoGenObject.LibraryAutoGenList:
-            if not LibraryAutoGen.IsBinaryModule and not LibraryAutoGen.CanSkipbyHash():
+            if not LibraryAutoGen.IsBinaryModule:
                 DirList.append(os.path.join(self._AutoGenObject.BuildDir, LibraryAutoGen.BuildDir))
         return DirList
 

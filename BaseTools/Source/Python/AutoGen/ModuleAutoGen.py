@@ -1779,8 +1779,8 @@ class ModuleAutoGen(AutoGen):
         self.GenFfsList = GenFfsList
 
 
-        # Don't enable if cache feature enabled, CanSkip uses timestamps to determine build skipping
-        if not GlobalData.gBinCacheSource and not GlobalData.gBinCacheDest and self.CanSkip():
+        # CanSkip uses timestamps to determine build skipping
+        if self.CanSkip():
             return
 
         if len(self.CustomMakefile) == 0:
@@ -1843,8 +1843,8 @@ class ModuleAutoGen(AutoGen):
             return
 
 
-        # Don't enable if cache feature enabled, CanSkip uses timestamps to determine build skipping
-        if not GlobalData.gBinCacheSource and not GlobalData.gBinCacheDest and self.CanSkip():
+        # CanSkip uses timestamps to determine build skipping
+        if self.CanSkip():
             return
 
         AutoGenList = []
@@ -2453,6 +2453,10 @@ class ModuleAutoGen(AutoGen):
     #  If any source file is newer than the module than we cannot skip
     #
     def CanSkip(self):
+        # Don't enable if cache feature enabled
+        if GlobalData.gBinCacheDest or GlobalData.gBinCacheSource:
+            return False
+
         if self.MakeFileDir in GlobalData.gSikpAutoGenCache:
             return True
         if not os.path.exists(self.TimeStampPath):

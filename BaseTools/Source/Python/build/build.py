@@ -2037,10 +2037,10 @@ class Build():
                         GlobalData.gModuleBuildTracking[Ma] = 'FAIL'
 
                     # Add Platform and Package level hash in share_data for module hash calculation later
-                    if GlobalData.gBinCacheSource:
-                      GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
-                      for PkgName in GlobalData.gPackageHash.keys():
-                          GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
+                    if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
+                        GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
+                        for PkgName in GlobalData.gPackageHash.keys():
+                            GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
 
                     mqueue = mp.Queue()
                     for m in Pa.GetAllModuleInfo:

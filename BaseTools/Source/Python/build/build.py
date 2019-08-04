@@ -850,16 +850,6 @@ class Build():
                             continue
 
             self.AutoGenMgr.join()
-
-            # if PcdMaList is not None:
-                # for PcdMa in PcdMaList:
-                    # if GlobalData.gBinCacheSource:
-                        # GlobalData.libConstPcd = DataPipe.Get("LibConstPcd")
-                        # GlobalData.Refes = DataPipe.Get("REFS")
-                        # PcdMa.GenMakeHeaderFilesHash(share_data)
-                        # PcdMa.GenMakeHash(share_data)
-                        # if PcdMa.CanSkipbyMakeCache(share_data):
-                            # continue
             rt = self.AutoGenMgr.Status
             return rt, 0
         except Exception as e:
@@ -2036,48 +2026,36 @@ class Build():
                     for Module in ModuleList:
                         # Get ModuleAutoGen object to generate C code file and makefile
                         Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
-
                         if Ma is None:
                             continue
                         if Ma.PcdIsDriver:
                             Ma.PlatformInfo = Pa
                             Ma.Workspace = Wa
                             PcdMaList.append(Ma)
-                        # if Ma.CanSkipbyHash():
-                            # self.HashSkipModules.append(Ma)
-                            # if GlobalData.gBinCacheSource:
-                                # EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
-                            # continue
-                        # else:
-                            # if GlobalData.gBinCacheSource:
-                                # EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
-
-                        # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
-                            # for target which must generate AutoGen code and makefile
-
-                        #self.BuildModules.append(Ma)
                         TotalModules.append(Ma)
                         # Initialize all modules in tracking to 'FAIL'
                         GlobalData.gModuleBuildTracking[Ma] = 'FAIL'
+
+                    # Add Platform and Package level hash in share_data for module hash calculation later
+                    if GlobalData.gBinCacheSource:
+                      GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
+                      for PkgName in GlobalData.gPackageHash.keys():
+                          GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
+
                     mqueue = mp.Queue()
                     for m in Pa.GetAllModuleInfo:
                         mqueue.put(m)
                     data_pipe_file = os.path.join(Pa.BuildDir, "GlobalVar_%s_%s.bin" % (str(Pa.Guid),Pa.Arch))
                     Pa.DataPipe.dump(data_pipe_file)
-
-                    # Add Platform and Package level hash in share_data
-                    GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
-                    for PkgName in GlobalData.gPackageHash.keys():
-                        GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
                     autogen_rt, errorcode = self.StartAutoGen(mqueue, Pa.DataPipe, self.SkipAutoGen, PcdMaList,  GlobalData.gCacheIR)
 
+                    # Skip cache hit modules
                     if GlobalData.gBinCacheSource:
                         for Ma in TotalModules:
                             if (Ma.MetaFile.Path, Ma.Arch) in GlobalData.gCacheIR and \
                                 GlobalData.gCacheIR[(Ma.MetaFile.Path, Ma.Arch)].PreMakeCacheHit:
                                     self.HashSkipModules.append(Ma)
                                     continue
-
                             if (Ma.MetaFile.Path, Ma.Arch) in GlobalData.gCacheIR and \
                                 GlobalData.gCacheIR[(Ma.MetaFile.Path, Ma.Arch)].MakeCacheHit:
                                     self.HashSkipModules.append(Ma)
@@ -2093,19 +2071,20 @@ class Build():
                 self.AutoGenTime += int(round((time.time() - AutoGenStart)))
                 self.Progress.Stop("done!")
 
-                EdkLogger.quiet("Total cache hit driver num: %s, cache miss driver num: %s" % (len(set(self.HashSkipModules)), len(set(self.BuildModules))))
-                CacheHitMa = set()
-                CacheNotHitMa = set()
-                for IR in GlobalData.gCacheIR.keys():
-                    if 'PlatformHash' in IR or 'PackageHash' in IR:
-                        continue
-                    if GlobalData.gCacheIR[IR].PreMakeCacheHit or GlobalData.gCacheIR[IR].MakeCacheHit:
-                        CacheHitMa.add(IR)
-                    else:
-                        # There might be binary module or module which has .inc files, not count for cache miss
-                        CacheNotHitMa.add(IR)
-                        #print (IR)
-                EdkLogger.quiet("Total module num: %s, cache hit module num: %s" % (len(CacheHitMa)+len(CacheNotHitMa), len(CacheHitMa)))
+                if GlobalData.gBinCacheSource:
+                    EdkLogger.quiet("Total cache hit driver num: %s, cache miss driver num: %s" % (len(set(self.HashSkipModules)), len(set(self.BuildModules))))
+                    CacheHitMa = set()
+                    CacheNotHitMa = set()
+                    for IR in GlobalData.gCacheIR.keys():
+                        if 'PlatformHash' in IR or 'PackageHash' in IR:
+                            continue
+                        if GlobalData.gCacheIR[IR].PreMakeCacheHit or GlobalData.gCacheIR[IR].MakeCacheHit:
+                            CacheHitMa.add(IR)
+                        else:
+                            # There might be binary module or module which has .inc files, not count for cache miss
+                            CacheNotHitMa.add(IR)
+                    EdkLogger.quiet("Total module num: %s, cache hit module num: %s" % (len(CacheHitMa)+len(CacheNotHitMa), len(CacheHitMa)))
+
                 for Arch in Wa.ArchList:
                     MakeStart = time.time()
                     for Ma in set(self.BuildModules):

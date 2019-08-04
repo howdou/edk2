@@ -1615,14 +1615,7 @@ class ModuleAutoGen(AutoGen):
         FfsDir = path.join(GlobalData.gBinCacheDest, self.PlatformInfo.OutputDir, self.BuildTarget + "_" + self.ToolChain, TAB_FV_DIRECTORY, "Ffs", self.Guid + self.Name)
 
         CreateDirectory (FileDir)
-        # HashFile = path.join(self.BuildDir, self.Name + '.hash')
-        # EdkLogger.quiet("CopyModuleToCache FileDir: %s", FileDir)
-        # EdkLogger.quiet("CopyModuleToCache HashFile: %s", HashFile)
-        # if os.path.exists(HashFile):
-            # CopyFileOnChange(HashFile, FileDir)
-
         self.SaveHashChainFileToCache(GlobalData.gCacheIR)
-
         ModuleFile = path.join(self.OutputDir, self.Name + '.inf')
         if os.path.exists(ModuleFile):
             CopyFileOnChange(ModuleFile, FileDir)

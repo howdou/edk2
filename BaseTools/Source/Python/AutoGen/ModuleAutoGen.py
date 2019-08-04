@@ -1664,14 +1664,6 @@ class ModuleAutoGen(AutoGen):
         PreMakefileHashHexDigest = path.join(CacheDestDir, self.Name + ".PreMakefileHashHexDigest")
         MakeHashHexDigest = path.join(CacheDestDir, self.Name + ".MakeHashHexDigest")
         MakeHashChain = path.join(CacheDestDir, self.Name + ".MakeHashChain")
-        # Simply check whether the file has already existed
-        # Not check the HashChain file content same or not because it could be big
-        # if os.path.exists(PreMakefileHashHexDigest):
-            # EdkLogger.quiet("override PreMakefileHashHexDigest file in cache: %s" % PreMakefileHashHexDigest)
-        # if os.path.exists(MakeHashHexDigest):
-            # EdkLogger.quiet("override MakeHashHexDigest file in cache: %s" % MakeHashHexDigest)
-        # if os.path.exists(MakeHashChain):
-            # EdkLogger.quiet("override MakeHashChain file in cache: %s" % MakeHashChain)
 
         # save the HashChainDict as json file
         CreateDirectory (CacheDestDir)
@@ -1706,39 +1698,6 @@ class ModuleAutoGen(AutoGen):
                 CopyFileOnChange(str(File), CacheDebugDir)
 
         return True
-
-    def AttemptModuleCacheCopy(self):
-        # If library or Module is binary do not skip by hash
-        if self.IsBinaryModule:
-            return False
-        # .inc is contains binary information so do not skip by hash as well
-        for f_ext in self.SourceFileList:
-            if '.inc' in str(f_ext):
-                return False
-        FileDir = path.join(GlobalData.gBinCacheSource, self.PlatformInfo.Name, self.BuildTarget + "_" + self.ToolChain, self.Arch, self.SourceDir, self.MetaFile.BaseName)
-        HashFile = path.join(FileDir, self.Name + '.hash')
-        if os.path.exists(HashFile):
-            f = open(HashFile, 'r')
-            CacheHash = f.read()
-            f.close()
-            self.GenModuleHash()
-            if GlobalData.gModuleHash[self.Arch][self.Name]:
-                if CacheHash == GlobalData.gModuleHash[self.Arch][self.Name]:
-                    for root, dir, files in os.walk(FileDir):
-                        for f in files:
-                            if self.Name + '.hash' in f:
-                                CopyFileOnChange(HashFile, self.BuildDir)
-                            else:
-                                File = path.join(root, f)
-                                sub_dir = os.path.relpath(File, FileDir)
-                                destination_file = os.path.join(self.OutputDir, sub_dir)
-                                destination_dir = os.path.dirname(destination_file)
-                                CreateDirectory(destination_dir)
-                                CopyFileOnChange(File, destination_dir)
-                    if self.Name == "PcdPeim" or self.Name == "PcdDxe":
-                        CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
-                    return True
-        return False
 
     ## Create makefile for the module and its dependent libraries
     #
@@ -2418,43 +2377,11 @@ class ModuleAutoGen(AutoGen):
         return False
 
     ## Decide whether we can skip the ModuleAutoGen process
-    def CanSkipbyHash(self):
-        # Hashing feature is off
-        if not GlobalData.gUseHashCache:
-            return False
-
-        # If library or Module is binary do not skip by hash
-        if self.IsBinaryModule:
-            return False
-
-        # .inc is contains binary information so do not skip by hash as well
-        for f_ext in self.SourceFileList:
-            if '.inc' in str(f_ext):
-                return False
-
-        # Use Cache, if exists and if Module has a copy in cache
-        if GlobalData.gBinCacheSource and self.AttemptModuleCacheCopy():
-            return True
-
-        # Early exit for libraries that haven't yet finished building
-        HashFile = path.join(self.BuildDir, self.Name + ".hash")
-        if self.IsLibrary and not os.path.exists(HashFile):
-            return False
-
-        # Return a Boolean based on if can skip by hash, either from memory or from IO.
-        if self not in GlobalData.gBuildHashSkipTracking:
-            # If hashes are the same, SaveFileOnChange() will return False.
-            GlobalData.gBuildHashSkipTracking[self] = not SaveFileOnChange(HashFile, self.GenModuleHash(), True)
-            return GlobalData.gBuildHashSkipTracking[self]
-        else:
-            return GlobalData.gBuildHashSkipTracking[self]
-
-    ## Decide whether we can skip the ModuleAutoGen process
     #  If any source file is newer than the module than we cannot skip
     #
     def CanSkip(self):
-        # Don't enable if cache feature enabled
-        if GlobalData.gBinCacheDest or GlobalData.gBinCacheSource:
+        # Don't skip if cache feature enabled
+        if GlobalData.gUseHashCache or GlobalData.gBinCacheDest or GlobalData.gBinCacheSource:
             return False
 
         if self.MakeFileDir in GlobalData.gSikpAutoGenCache:

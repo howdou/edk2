@@ -251,10 +251,11 @@ class ModuleAutoGen(AutoGen):
         self._FinalBuildTargetList    = None
         self._FileTypes               = None
 
-        self.AutoGenDepSet = set()
+        self.AutoGenDepSet    = set()
         self.ReferenceModules = []
-        self.ConstPcd                  = {}
-        self.Makefile     = None
+        self.ConstPcd         = {}
+        self.Makefile         = None
+        self.FileDependCache  = {}
 
     def __init_platform_info__(self):
         pinfo = self.DataPipe.Get("P_Info")
@@ -1657,6 +1658,7 @@ class ModuleAutoGen(AutoGen):
         PreMakefileHashHexDigest = path.join(CacheDestDir, self.Name + ".PreMakefileHashHexDigest")
         MakeHashHexDigest = path.join(CacheDestDir, self.Name + ".MakeHashHexDigest")
         MakeHashChain = path.join(CacheDestDir, self.Name + ".MakeHashChain")
+        ModuleFilesChain = path.join(CacheDestDir, self.Name + ".ModuleFilesChain")
 
         # save the HashChainDict as json file
         CreateDirectory (CacheDestDir)
@@ -1680,6 +1682,14 @@ class ModuleAutoGen(AutoGen):
                 f.close()
         except:
             EdkLogger.quiet("[cache warning]: fail to save MakeHashChain file in cache: %s" % MakeHashChain)
+            return False
+
+        try:
+            with open(ModuleFilesChain, 'w') as f:
+                json.dump(gDict[(self.MetaFile.Path, self.Arch)].ModuleFilesChain, f, indent=2)
+                f.close()
+        except:
+            EdkLogger.quiet("[cache warning]: fail to save ModuleFilesChain file in cache: %s" % ModuleFilesChain)
             return False
 
         # save the autogenfile and makefile for debug useage
@@ -1924,10 +1934,41 @@ class ModuleAutoGen(AutoGen):
         DependencyFileSet = set()
         # Add Module Meta file
         DependencyFileSet.add(self.MetaFile)
+
         # Add Module's source files
         if self.SourceFileList:
             for File in set(self.SourceFileList):
                 DependencyFileSet.add(File)
+
+        # Add modules's include header files
+        # Search dependency file list for each source file
+        SourceFileList = []
+        OutPutFileList = []
+        for Target in self.IntroTargetList:
+            SourceFileList.extend(Target.Inputs)
+            OutPutFileList.extend(Target.Outputs)
+        if OutPutFileList:
+            for Item in OutPutFileList:
+                if Item in SourceFileList:
+                    SourceFileList.remove(Item)
+        SearchList = []
+        for file_path in self.IncludePathList + self.BuildOptionIncPathList:
+            # skip the folders in platform BuildDir which are not been generated yet
+            if file_path.startswith(os.path.abspath(self.PlatformInfo.BuildDir)+os.sep):
+                continue
+            SearchList.append(file_path)
+        FileDependencyDict = {}
+        ForceIncludedFile = []
+        for F in SourceFileList:
+            # skip the files which are not been generated yet, because
+            # the SourceFileList usually contains intermediate build files, e.g. AutoGen.c
+            if not os.path.exists(F.Path):
+                continue
+            FileDependencyDict[F] = GenMake.GetDependencyList(self, self.FileDependCache, F, ForceIncludedFile, SearchList)
+
+        if FileDependencyDict:
+            for Dependency in FileDependencyDict.values():
+                DependencyFileSet.update(set(Dependency))
 
         # Caculate all above dependency files hash
         # Initialze hash object

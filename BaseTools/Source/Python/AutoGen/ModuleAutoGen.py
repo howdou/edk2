@@ -2402,6 +2402,7 @@ class ModuleAutoGen(AutoGen):
         ModuleHashPairList = [] # tuple list: [tuple(PreMakefileHash, MakeHash)]
         ModuleHashPair = path.join(FileDir, self.Name + ".ModuleHashPair")
         if not os.path.exists(ModuleHashPair):
+            EdkLogger.quiet("[cache insight]: Cannot find ModuleHashPair file for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
             return
 
         try:
@@ -2409,6 +2410,7 @@ class ModuleAutoGen(AutoGen):
             ModuleHashPairList = json.load(f)
             f.close()
         except:
+            EdkLogger.quiet("[cache insight]: Cannot load ModuleHashPair file for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
             return
 
         MakeHashSet = set()
@@ -2418,8 +2420,9 @@ class ModuleAutoGen(AutoGen):
                 MakeHashSet.add(MakeHash)
         if not MakeHashSet:
             EdkLogger.quiet("[cache insight]: Cannot find valid cache dir for module: %s[%s]" % (self.MetaFile.Path, self.Arch))
+            return
 
-        TargetHash = MakeHashSet.pop()
+        TargetHash = list(MakeHashSet)[0]
         TargetHashDir = path.join(FileDir, str(TargetHash))
         if len(MakeHashSet) > 1 :
             EdkLogger.quiet("[cache insight]: found multiple cache dirs for this module, random select dir '%s' to search the first cache miss file: %s[%s]" % (TargetHash, self.MetaFile.Path, self.Arch))
@@ -2431,6 +2434,7 @@ class ModuleAutoGen(AutoGen):
                 CachedList = json.load(f)
                 f.close()
             except:
+                EdkLogger.quiet("[cache insight]: Cannot load MakeHashChain file: %s" % ListFile)
                 return
         else:
             EdkLogger.quiet("[cache insight]: Cannot find MakeHashChain file: %s" % ListFile)

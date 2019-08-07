@@ -824,6 +824,8 @@ class Build():
             if FfsCmd is None:
                 FfsCmd = {}
             GlobalData.FfsCmd = FfsCmd
+            GlobalData.libConstPcd = DataPipe.Get("LibConstPcd")
+            GlobalData.Refes = DataPipe.Get("REFS")
             auto_workers = [AutoGenWorkerInProcess(mqueue,DataPipe.dump_file,feedback_q,file_lock,share_data,self.log_q,error_event) for _ in range(self.ThreadNumber)]
             self.AutoGenMgr = AutoGenManager(auto_workers,feedback_q,error_event)
             self.AutoGenMgr.start()
@@ -842,8 +844,6 @@ class Build():
                     PcdMa.CreateAsBuiltInf()
 
                     if GlobalData.gBinCacheSource:
-                        GlobalData.libConstPcd = DataPipe.Get("LibConstPcd")
-                        GlobalData.Refes = DataPipe.Get("REFS")
                         PcdMa.GenMakeHeaderFilesHash(share_data)
                         PcdMa.GenMakeHash(share_data)
                         if PcdMa.CanSkipbyMakeCache(share_data):
@@ -1817,6 +1817,15 @@ class Build():
                 CmdListDict = None
                 if GlobalData.gEnableGenfdsMultiThread and self.Fdf:
                     CmdListDict = self._GenFfsCmd(Wa.ArchList)
+
+                # Add Platform and Package level hash in share_data for module hash calculation later
+                if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
+                    GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
+                    for PkgName in GlobalData.gPackageHash.keys():
+                        GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
+                GlobalData.file_lock = mp.Lock()
+                GlobalData.FfsCmd = CmdListDict
+
                 self.Progress.Stop("done!")
                 MaList = []
                 ExitFlag = threading.Event()
@@ -1826,20 +1835,23 @@ class Build():
                     AutoGenStart = time.time()
                     GlobalData.gGlobalDefines['ARCH'] = Arch
                     Pa = PlatformAutoGen(Wa, self.PlatformFile, BuildTarget, ToolChain, Arch)
+                    GlobalData.libConstPcd = Pa.DataPipe.Get("LibConstPcd")
+                    GlobalData.Refes = Pa.DataPipe.Get("REFS")
                     for Module in Pa.Platform.Modules:
                         if self.ModuleFile.Dir == Module.Dir and self.ModuleFile.Name == Module.Name:
                             Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)
                             if Ma is None:
                                 continue
                             MaList.append(Ma)
-                            if Ma.CanSkipbyHash():
-                                self.HashSkipModules.append(Ma)
-                                if GlobalData.gBinCacheSource:
-                                    EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
-                                continue
-                            else:
-                                if GlobalData.gBinCacheSource:
-                                    EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+
+                            if GlobalData.gBinCacheSource:
+                                Ma.GenModuleFilesHash(GlobalData.gCacheIR)
+                                Ma.GenPreMakefileHash(GlobalData.gCacheIR)
+                                if Ma.CanSkipbyPreMakefileCache(GlobalData.gCacheIR):
+                                   self.HashSkipModules.append(Ma)
+                                   EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                                   continue
+
                             # Not to auto-gen for targets 'clean', 'cleanlib', 'cleanall', 'run', 'fds'
                             if self.Target not in ['clean', 'cleanlib', 'cleanall', 'run', 'fds']:
                                 # for target which must generate AutoGen code and makefile
@@ -1859,6 +1871,18 @@ class Build():
                                     self.Progress.Stop("done!")
                                 if self.Target == "genmake":
                                     return True
+
+                                if GlobalData.gBinCacheSource:
+                                    Ma.GenMakeHeaderFilesHash(GlobalData.gCacheIR)
+                                    Ma.GenMakeHash(GlobalData.gCacheIR)
+                                    if Ma.CanSkipbyMakeCache(GlobalData.gCacheIR):
+                                        self.HashSkipModules.append(Ma)
+                                        EdkLogger.quiet("cache hit: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                                        continue
+                                    else:
+                                        EdkLogger.quiet("cache miss: %s[%s]" % (Ma.MetaFile.Path, Ma.Arch))
+                                        Ma.PrintFirstMakeCacheMissFile(GlobalData.gCacheIR)
+
                             self.BuildModules.append(Ma)
                             # Initialize all modules in tracking to 'FAIL'
                             GlobalData.gModuleBuildTracking[Ma] = 'FAIL'
@@ -2000,6 +2024,12 @@ class Build():
                 if GlobalData.gEnableGenfdsMultiThread and self.Fdf:
                     CmdListDict = self._GenFfsCmd(Wa.ArchList)
 
+                # Add Platform and Package level hash in share_data for module hash calculation later
+                if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
+                    GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
+                    for PkgName in GlobalData.gPackageHash.keys():
+                        GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
+
                 # multi-thread exit flag
                 ExitFlag = threading.Event()
                 ExitFlag.clear()
@@ -2038,12 +2068,6 @@ class Build():
                         TotalModules.append(Ma)
                         # Initialize all modules in tracking to 'FAIL'
                         GlobalData.gModuleBuildTracking[Ma] = 'FAIL'
-
-                    # Add Platform and Package level hash in share_data for module hash calculation later
-                    if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
-                        GlobalData.gCacheIR[('PlatformHash')] = GlobalData.gPlatformHash
-                        for PkgName in GlobalData.gPackageHash.keys():
-                            GlobalData.gCacheIR[(PkgName, 'PackageHash')] = GlobalData.gPackageHash[PkgName]
 
                     mqueue = mp.Queue()
                     for m in Pa.GetAllModuleInfo:

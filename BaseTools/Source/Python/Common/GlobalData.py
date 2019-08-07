@@ -119,3 +119,10 @@ gModuleBuildTracking = dict()
 # Top Dict:     Key: Arch Type              Value: Dictionary
 # Second Dict:  Key: Module\Library Name    Value: True\False
 gBuildHashSkipTracking = dict()
+
+# Dictionary of build cache intermediate result and state
+gCacheIR = None
+
+file_lock = None
+libConstPcd = None
+Refes = None

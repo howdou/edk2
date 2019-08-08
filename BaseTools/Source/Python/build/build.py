@@ -1217,6 +1217,7 @@ class Build():
                 mqueue.put(m)
 
             AutoGenObject.DataPipe.DataContainer = {"FfsCommand":FfsCommand}
+            AutoGenObject.DataPipe.DataContainer = {"CommandTarget": self.Target}
             self.Progress.Start("Generating makefile and code")
             data_pipe_file = os.path.join(AutoGenObject.BuildDir, "GlobalVar_%s_%s.bin" % (str(AutoGenObject.Guid),AutoGenObject.Arch))
             AutoGenObject.DataPipe.dump(data_pipe_file)

@@ -2223,9 +2223,9 @@ class ModuleAutoGen(AutoGen):
             return False
 
         # .inc is contains binary information so do not skip by hash as well
-        # for f_ext in self.SourceFileList:
-            # if '.inc' in str(f_ext):
-                # return False
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                return False
 
         # Get the module hash values from stored cache and currrent build
         # then check whether cache hit based on the hash values
@@ -2310,14 +2310,14 @@ class ModuleAutoGen(AutoGen):
             return False
 
         # .inc is contains binary information so do not skip by hash as well
-        # for f_ext in self.SourceFileList:
-            # if '.inc' in str(f_ext):
-                # with GlobalData.file_lock:
-                    # IR = gDict[(self.MetaFile.Path, self.Arch)]
-                    # IR.MakeCacheHit = False
-                    # gDict[(self.MetaFile.Path, self.Arch)] = IR
-                # print("[cache miss]: checkpoint_Makefile: .inc module:", self.MetaFile.Path, self.Arch)
-                # return False
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                with GlobalData.file_lock:
+                    IR = gDict[(self.MetaFile.Path, self.Arch)]
+                    IR.MakeCacheHit = False
+                    gDict[(self.MetaFile.Path, self.Arch)] = IR
+                print("[cache miss]: checkpoint_Makefile: .inc module:", self.MetaFile.Path, self.Arch)
+                return False
 
         # Get the module hash values from stored cache and currrent build
         # then check whether cache hit based on the hash values
@@ -2475,10 +2475,10 @@ class ModuleAutoGen(AutoGen):
             return False
 
         # .inc is contains binary information so do not skip by hash as well
-        # for f_ext in self.SourceFileList:
-            # if '.inc' in str(f_ext):
-                # GlobalData.gBuildHashSkipTracking[self] = False
-                # return False
+        for f_ext in self.SourceFileList:
+            if '.inc' in str(f_ext):
+                GlobalData.gBuildHashSkipTracking[self] = False
+                return False
 
         if not (self.MetaFile.Path, self.Arch) in gDict:
             return False

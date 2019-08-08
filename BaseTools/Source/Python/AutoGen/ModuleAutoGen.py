@@ -1248,6 +1248,7 @@ class ModuleAutoGen(AutoGen):
         fStringIO.close ()
         fInputfile.close ()
         return OutputName
+
     @cached_property
     def OutputFile(self):
         retVal = set()
@@ -1271,7 +1272,8 @@ class ModuleAutoGen(AutoGen):
 
         for Root, Dirs, Files in os.walk(FfsOutputDir):
             for File in Files:
-                if File.lower().endswith('.ffs'):
+                if File.lower().endswith('.ffs') or File.lower().endswith('.offset') or File.lower().endswith('.raw') \
+                    or File.lower().endswith('.raw.txt'):
                     retVal.add(File)
 
         return retVal
@@ -1649,7 +1651,8 @@ class ModuleAutoGen(AutoGen):
                     NewFile = os.path.join(self.FfsOutputDir, File)
                 File = NewFile
             if os.path.exists(File):
-                if File.endswith('.ffs'):
+                if File.lower().endswith('.ffs') or File.lower().endswith('.offset') or File.lower().endswith('.raw') \
+                    or File.lower().endswith('.raw.txt'):
                     self.CacheCopyFile(FfsDir, self.FfsOutputDir, File)
                 else:
                     self.CacheCopyFile(FileDir, self.OutputDir, File)
@@ -2278,7 +2281,7 @@ class ModuleAutoGen(AutoGen):
             for f in files:
                 File = path.join(root, f)
                 self.CacheCopyFile(self.OutputDir, TargetHashDir, File)
-        if GlobalData.gEnableGenfdsMultiThread and os.path.exists(TargetFfsHashDir):
+        if os.path.exists(TargetFfsHashDir):
             for root, dir, files in os.walk(TargetFfsHashDir):
                 for f in files:
                     File = path.join(root, f)
@@ -2370,7 +2373,7 @@ class ModuleAutoGen(AutoGen):
                 File = path.join(root, f)
                 self.CacheCopyFile(self.OutputDir, TargetHashDir, File)
 
-        if GlobalData.gEnableGenfdsMultiThread and os.path.exists(TargetFfsHashDir):
+        if os.path.exists(TargetFfsHashDir):
             for root, dir, files in os.walk(TargetFfsHashDir):
                 for f in files:
                     File = path.join(root, f)

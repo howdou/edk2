@@ -1612,7 +1612,7 @@ class ModuleAutoGen(AutoGen):
         try:
             CopyFileOnChange(File, destination_dir)
         except:
-            EdkLogger.quiet("[cache warning]: fail to copy file:%s to folder:%s" % File, destination_dir)
+            EdkLogger.quiet("[cache warning]: fail to copy file:%s to folder:%s" % (File, destination_dir))
             return
 
     def CopyModuleToCache(self):

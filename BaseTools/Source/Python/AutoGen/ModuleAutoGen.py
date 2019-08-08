@@ -1609,7 +1609,11 @@ class ModuleAutoGen(AutoGen):
         destination_file = os.path.join(OriginDir, sub_dir)
         destination_dir = os.path.dirname(destination_file)
         CreateDirectory(destination_dir)
-        CopyFileOnChange(File, destination_dir)
+        try:
+            CopyFileOnChange(File, destination_dir)
+        except:
+            EdkLogger.quiet("[cache warning]: fail to copy file:%s to folder:%s" % File, destination_dir)
+            return
 
     def CopyModuleToCache(self):
         self.GenPreMakefileHash(GlobalData.gCacheIR)

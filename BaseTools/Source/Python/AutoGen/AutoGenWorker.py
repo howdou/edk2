@@ -187,6 +187,7 @@ class AutoGenWorkerInProcess(mp.Process):
             GlobalData.gCacheIR = self.data_pipe.Get("CacheIR")
             GlobalData.gEnableGenfdsMultiThread = self.data_pipe.Get("EnableGenfdsMultiThread")
             GlobalData.file_lock = self.file_lock
+            CommandTarget = self.data_pipe.Get("CommandTarget")
             pcd_from_build_option = []
             for pcd_tuple in self.data_pipe.Get("BuildOptPcd"):
                 pcd_id = ".".join((pcd_tuple[0],pcd_tuple[1]))
@@ -222,8 +223,6 @@ class AutoGenWorkerInProcess(mp.Process):
                 if module_originalpath:
                     module_metafile.OriginalPath = PathClass(module_originalpath,module_root)
                 arch = module_arch
-                target = self.data_pipe.Get("P_Info").get("Target")
-                toolchain = self.data_pipe.Get("P_Info").get("ToolChain")
                 Ma = ModuleAutoGen(self.Wa,module_metafile,target,toolchain,arch,PlatformMetaFile,self.data_pipe)
                 Ma.IsLibrary = IsLib
                 if IsLib:
@@ -231,7 +230,7 @@ class AutoGenWorkerInProcess(mp.Process):
                         Ma.ConstPcd = libConstPcd[(Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path)]
                     if (Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path) in Refes:
                         Ma.ReferenceModules = Refes[(Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path)]
-                if GlobalData.gBinCacheSource and target in [None, "", "all"]:
+                if GlobalData.gBinCacheSource and CommandTarget in [None, "", "all"]:
                     Ma.GenModuleFilesHash(GlobalData.gCacheIR)
                     Ma.GenPreMakefileHash(GlobalData.gCacheIR)
                     if Ma.CanSkipbyPreMakefileCache(GlobalData.gCacheIR):
@@ -240,7 +239,7 @@ class AutoGenWorkerInProcess(mp.Process):
                 Ma.CreateCodeFile(False)
                 Ma.CreateMakeFile(False,GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
 
-                if GlobalData.gBinCacheSource and target in [None, "", "all"]:
+                if GlobalData.gBinCacheSource and CommandTarget in [None, "", "all"]:
                     Ma.GenMakeHeaderFilesHash(GlobalData.gCacheIR)
                     Ma.GenMakeHash(GlobalData.gCacheIR)
                     if Ma.CanSkipbyMakeCache(GlobalData.gCacheIR):

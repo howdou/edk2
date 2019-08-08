@@ -2055,6 +2055,7 @@ class Build():
                             ModuleList.append(Inf)
                     Pa.DataPipe.DataContainer = {"FfsCommand":CmdListDict}
                     Pa.DataPipe.DataContainer = {"Workspace_timestamp": Wa._SrcTimeStamp}
+                    Pa.DataPipe.DataContainer = {"CommandTarget": self.Target}
                     for Module in ModuleList:
                         # Get ModuleAutoGen object to generate C code file and makefile
                         Ma = ModuleAutoGen(Wa, Module, BuildTarget, ToolChain, Arch, self.PlatformFile,Pa.DataPipe)

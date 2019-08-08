@@ -833,7 +833,7 @@ class Build():
                 w.start()
             if PcdMaList is not None:
                 for PcdMa in PcdMaList:
-                    if GlobalData.gBinCacheSource:
+                    if GlobalData.gBinCacheSource and self.Target in [None, "", "all"]:
                         PcdMa.GenModuleFilesHash(share_data)
                         PcdMa.GenPreMakefileHash(share_data)
                         if PcdMa.CanSkipbyPreMakefileCache(share_data):
@@ -843,7 +843,7 @@ class Build():
                     PcdMa.CreateMakeFile(False,GenFfsList = DataPipe.Get("FfsCommand").get((PcdMa.MetaFile.File, PcdMa.Arch),[]))
                     PcdMa.CreateAsBuiltInf()
 
-                    if GlobalData.gBinCacheSource:
+                    if GlobalData.gBinCacheSource and self.Target in [None, "", "all"]:
                         PcdMa.GenMakeHeaderFilesHash(share_data)
                         PcdMa.GenMakeHash(share_data)
                         if PcdMa.CanSkipbyMakeCache(share_data):
@@ -1844,7 +1844,7 @@ class Build():
                                 continue
                             MaList.append(Ma)
 
-                            if GlobalData.gBinCacheSource:
+                            if GlobalData.gBinCacheSource and self.Target in [None, "", "all"]:
                                 Ma.GenModuleFilesHash(GlobalData.gCacheIR)
                                 Ma.GenPreMakefileHash(GlobalData.gCacheIR)
                                 if Ma.CanSkipbyPreMakefileCache(GlobalData.gCacheIR):
@@ -1872,7 +1872,7 @@ class Build():
                                 if self.Target == "genmake":
                                     return True
 
-                                if GlobalData.gBinCacheSource:
+                                if GlobalData.gBinCacheSource and self.Target in [None, "", "all"]:
                                     Ma.GenMakeHeaderFilesHash(GlobalData.gCacheIR)
                                     Ma.GenMakeHash(GlobalData.gCacheIR)
                                     if Ma.CanSkipbyMakeCache(GlobalData.gCacheIR):

@@ -231,7 +231,7 @@ class AutoGenWorkerInProcess(mp.Process):
                         Ma.ConstPcd = libConstPcd[(Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path)]
                     if (Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path) in Refes:
                         Ma.ReferenceModules = Refes[(Ma.MetaFile.File,Ma.MetaFile.Root,Ma.Arch,Ma.MetaFile.Path)]
-                if GlobalData.gBinCacheSource:
+                if GlobalData.gBinCacheSource and target in [None, "", "all"]:
                     Ma.GenModuleFilesHash(GlobalData.gCacheIR)
                     Ma.GenPreMakefileHash(GlobalData.gCacheIR)
                     if Ma.CanSkipbyPreMakefileCache(GlobalData.gCacheIR):
@@ -240,7 +240,7 @@ class AutoGenWorkerInProcess(mp.Process):
                 Ma.CreateCodeFile(False)
                 Ma.CreateMakeFile(False,GenFfsList=FfsCmd.get((Ma.MetaFile.File, Ma.Arch),[]))
 
-                if GlobalData.gBinCacheSource:
+                if GlobalData.gBinCacheSource and target in [None, "", "all"]:
                     Ma.GenMakeHeaderFilesHash(GlobalData.gCacheIR)
                     Ma.GenMakeHash(GlobalData.gCacheIR)
                     if Ma.CanSkipbyMakeCache(GlobalData.gCacheIR):

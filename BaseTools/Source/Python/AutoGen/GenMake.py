@@ -185,7 +185,7 @@ class BuildFile(object):
         self._FileType = FileType
         FileContent = self._TEMPLATE_.Replace(self._TemplateDict)
         FileName = self._FILE_NAME_[FileType]
-        return SaveFileOnChange(os.path.join(self._AutoGenObject.MakeFileDir, FileName), FileContent, False)
+        return SaveFileOnChange(os.path.join(self._AutoGenObject.MakeFileDir, FileName), FileContent, False, GlobalData.file_lock)
 
     ## Return a list of directory creation command string
     #

@@ -1612,7 +1612,7 @@ class ModuleAutoGen(AutoGen):
         destination_dir = os.path.dirname(destination_file)
         CreateDirectory(destination_dir)
         try:
-            CopyFileOnChange(File, destination_dir)
+            CopyFileOnChange(File, destination_dir, GlobalData.file_lock)
         except:
             EdkLogger.quiet("[cache warning]: fail to copy file:%s to folder:%s" % (File, destination_dir))
             return

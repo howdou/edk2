@@ -2103,5 +2103,5 @@ def CreateCode(Info, AutoGenC, AutoGenH, StringH, UniGenCFlag, UniGenBinBuffer, 
 #   @retval     False       If the file exists and the content is not changed
 #
 def Generate(FilePath, Content, IsBinaryFile):
-    return SaveFileOnChange(FilePath, Content, IsBinaryFile)
+    return SaveFileOnChange(FilePath, Content, IsBinaryFile, GlobalData.file_lock)
 

@@ -448,7 +448,7 @@ def RemoveDirectory(Directory, Recursively=False):
 #   @retval     True            If the file content is changed and the file is renewed
 #   @retval     False           If the file content is the same
 #
-def SaveFileOnChange(File, Content, IsBinaryFile=True):
+def SaveFileOnChange(File, Content, IsBinaryFile=True, FileLock=None):
 
     if os.path.exists(File):
         if IsBinaryFile:
@@ -486,8 +486,12 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True):
             tf.write(Content)
             tempname = tf.name
         try:
-            os.rename(tempname, File)
-        except:
+            if FileLock:
+                with FileLock:
+                    os.rename(tempname, File)
+            else:
+                os.rename(tempname, File)
+        except IOError as X:
             EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s' % X)
     else:
         try:
@@ -510,7 +514,7 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True):
 #   @retval     True      The two files content are different and the file is copied
 #   @retval     False     No copy really happen
 #
-def CopyFileOnChange(SrcFile, Dst):
+def CopyFileOnChange(SrcFile, Dst, FileLock=None):
     if not os.path.exists(SrcFile):
         return False
 
@@ -545,7 +549,11 @@ def CopyFileOnChange(SrcFile, Dst):
             # os.rename reqire to remove the dst on Windows, otherwise OSError will be raised.
             if GlobalData.gIsWindows and os.path.exists(DstFile):
                 os.remove(DstFile)
-            os.rename(tempname, DstFile)
+            if FileLock:
+                with FileLock:
+                    os.rename(tempname, DstFile)
+            else:
+                os.rename(tempname, DstFile)
 
     except IOError as X:
         EdkLogger.error(None, FILE_COPY_FAILURE, ExtraData='IOError %s' % X)

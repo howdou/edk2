@@ -1806,7 +1806,7 @@ class ModuleAutoGen(AutoGen):
         MewIR.MakefilePath = MakefilePath
         MewIR.DependencyHeaderFileSet = Makefile.DependencyHeaderFileSet
         MewIR.CreateMakeFileDone = True
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             try:
                 IR = gDict[(self.MetaFile.Path, self.Arch)]
                 IR.MakefilePath = MakefilePath
@@ -1891,7 +1891,7 @@ class ModuleAutoGen(AutoGen):
         self.IsCodeFileCreated = True
         MewIR = ModuleBuildCacheIR(self.MetaFile.Path, self.Arch)
         MewIR.CreateCodeFileDone = True
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             try:
                 IR = gDict[(self.MetaFile.Path, self.Arch)]
                 IR.CreateCodeFileDone = True
@@ -2032,7 +2032,7 @@ class ModuleAutoGen(AutoGen):
         MewIR.ModuleFilesHashDigest = m.digest()
         MewIR.ModuleFilesHashHexDigest = m.hexdigest()
         MewIR.ModuleFilesChain = FileList
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             try:
                 IR = gDict[(self.MetaFile.Path, self.Arch)]
                 IR.ModuleFilesHashDigest = m.digest()
@@ -2091,7 +2091,7 @@ class ModuleAutoGen(AutoGen):
         # Add Module self
         m.update(gDict[(self.MetaFile.Path, self.Arch)].ModuleFilesHashDigest)
 
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
             IR.PreMakefileHashHexDigest = m.hexdigest()
             gDict[(self.MetaFile.Path, self.Arch)] = IR
@@ -2159,7 +2159,7 @@ class ModuleAutoGen(AutoGen):
             m.update(Content)
             FileList.append((str(File), hashlib.md5(Content).hexdigest()))
 
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
             IR.AutoGenFileList = self.AutoGenFileList.keys()
             IR.MakeHeaderFilesHashChain = FileList
@@ -2222,7 +2222,7 @@ class ModuleAutoGen(AutoGen):
         New.sort(key=lambda x: str(x))
         MakeHashChain += New
 
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
             IR.MakeHashDigest = m.digest()
             IR.MakeHashHexDigest = m.hexdigest()
@@ -2300,7 +2300,7 @@ class ModuleAutoGen(AutoGen):
         if self.Name == "PcdPeim" or self.Name == "PcdDxe":
             CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
 
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
             IR.PreMakeCacheHit = True
             gDict[(self.MetaFile.Path, self.Arch)] = IR
@@ -2321,7 +2321,7 @@ class ModuleAutoGen(AutoGen):
         # .inc is contains binary information so do not skip by hash as well
         for f_ext in self.SourceFileList:
             if '.inc' in str(f_ext):
-                with GlobalData.file_lock:
+                with GlobalData.cache_lock:
                     IR = gDict[(self.MetaFile.Path, self.Arch)]
                     IR.MakeCacheHit = False
                     gDict[(self.MetaFile.Path, self.Arch)] = IR
@@ -2383,7 +2383,7 @@ class ModuleAutoGen(AutoGen):
 
         if self.Name == "PcdPeim" or self.Name == "PcdDxe":
             CreatePcdDatabaseCode(self, TemplateString(), TemplateString())
-        with GlobalData.file_lock:
+        with GlobalData.cache_lock:
             IR = gDict[(self.MetaFile.Path, self.Arch)]
             IR.MakeCacheHit = True
             gDict[(self.MetaFile.Path, self.Arch)] = IR

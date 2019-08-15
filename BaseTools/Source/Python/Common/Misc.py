@@ -485,25 +485,35 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True, FileLock=None):
     if FileLock:
         FileLock.acquire()
 
-    try:
-        if GlobalData.gIsWindows and not os.path.exists(File):
-            # write temp file, then rename the temp file to the real file
-            # to make sure the file be immediate saved to disk
-            with tempfile.NamedTemporaryFile(OpenMode, dir=os.path.dirname(File), delete=False) as tf:
-                tf.write(Content)
-                tempname = tf.name
-                os.rename(tempname, File)
-        else:
+
+    if GlobalData.gIsWindows and not os.path.exists(File):
+        # write temp file, then rename the temp file to the real file
+        # to make sure the file be immediate saved to disk
+        with tempfile.NamedTemporaryFile(OpenMode, dir=os.path.dirname(File), delete=False) as tf:
+            tf.write(Content)
+            tempname = tf.name
+        try:
+            os.rename(tempname, File)
+        except IOError as X:
+            if GlobalData.gBinCacheSource:
+                EdkLogger.quiet("[cache error]:fails to save file with error: %s" % (X))
+            else:
+                EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s' % X)
+        finally:
+            if FileLock:
+                FileLock.release()
+    else:
+        try:
             with open(File, OpenMode) as Fd:
                 Fd.write(Content)
-    except IOError as X:
-        if GlobalData.gBinCacheSource:
-            EdkLogger.quiet("[cache error]:fails to save file with error: %s" % (X))
-        else:
-            EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s' % X)
-    finally:
-        if FileLock:
-            FileLock.release()
+        except IOError as X:
+            if GlobalData.gBinCacheSource:
+                EdkLogger.quiet("[cache error]:fails to save file with error: %s" % (X))
+            else:
+                EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s' % X)
+        finally:
+            if FileLock:
+                FileLock.release()
 
     return True
 
@@ -550,17 +560,17 @@ def CopyFileOnChange(SrcFile, Dst, FileLock=None):
     # we use these two atomic operations to ensure the file copy is atomic:
     # copy the src to a temp file in the dst same folder firstly, then
     # replace or rename the temp file to the destination file.
+    with tempfile.NamedTemporaryFile(dir=DirName, delete=False) as tf:
+        shutil.copy(SrcFile, tf.name)
+        tempname = tf.name
     try:
-        with tempfile.NamedTemporaryFile(dir=DirName, delete=False) as tf:
-            shutil.copy(SrcFile, tf.name)
-            tempname = tf.name
-            if hasattr(os, 'replace'):
-                os.replace(tempname, DstFile)
-            else:
-                # os.rename reqire to remove the dst on Windows, otherwise OSError will be raised.
-                if GlobalData.gIsWindows and os.path.exists(DstFile):
-                    os.remove(DstFile)
-                os.rename(tempname, DstFile)
+        if hasattr(os, 'replace'):
+            os.replace(tempname, DstFile)
+        else:
+            # os.rename reqire to remove the dst on Windows, otherwise OSError will be raised.
+            if GlobalData.gIsWindows and os.path.exists(DstFile):
+                os.remove(DstFile)
+            os.rename(tempname, DstFile)
     except IOError as X:
         if GlobalData.gBinCacheSource:
             EdkLogger.quiet("[cache error]:fails to copy file with error: %s" % (X))

@@ -448,7 +448,7 @@ def RemoveDirectory(Directory, Recursively=False):
 #   @retval     True            If the file content is changed and the file is renewed
 #   @retval     False           If the file content is the same
 #
-def SaveFileOnChange(File, Content, IsBinaryFile=True):
+def SaveFileOnChange(File, Content, IsBinaryFile=True, FileLock=None):
 
     if os.path.exists(File):
         if IsBinaryFile:
@@ -479,22 +479,31 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True):
     if IsBinaryFile:
         OpenMode = "wb"
 
-    if GlobalData.gIsWindows and not os.path.exists(File):
-        # write temp file, then rename the temp file to the real file
-        # to make sure the file be immediate saved to disk
-        with tempfile.NamedTemporaryFile(OpenMode, dir=os.path.dirname(File), delete=False) as tf:
-            tf.write(Content)
-            tempname = tf.name
-        try:
-            os.rename(tempname, File)
-        except:
-            EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s' % X)
-    else:
-        try:
+    # use default file_lock if no input new lock
+    if not FileLock:
+        FileLock = GlobalData.file_lock
+    if FileLock:
+        FileLock.acquire()
+
+    try:
+        if GlobalData.gIsWindows and not os.path.exists(File):
+            # write temp file, then rename the temp file to the real file
+            # to make sure the file be immediate saved to disk
+            with tempfile.NamedTemporaryFile(OpenMode, dir=os.path.dirname(File), delete=False) as tf:
+                tf.write(Content)
+                tempname = tf.name
+                os.rename(tempname, File)
+        else:
             with open(File, OpenMode) as Fd:
                 Fd.write(Content)
-        except IOError as X:
+    except IOError as X:
+        if GlobalData.gBinCacheSource:
+            EdkLogger.quiet("[cache error]:fails to save file with error: %s" % (X))
+        else:
             EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s' % X)
+    finally:
+        if FileLock:
+            FileLock.release()
 
     return True
 
@@ -510,7 +519,7 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True):
 #   @retval     True      The two files content are different and the file is copied
 #   @retval     False     No copy really happen
 #
-def CopyFileOnChange(SrcFile, Dst):
+def CopyFileOnChange(SrcFile, Dst, FileLock=None):
     if not os.path.exists(SrcFile):
         return False
 
@@ -531,24 +540,35 @@ def CopyFileOnChange(SrcFile, Dst):
         if not os.access(DirName, os.W_OK):
             EdkLogger.error(None, PERMISSION_FAILURE, "Do not have write permission on directory %s" % DirName)
 
+    # use default file_lock if no input new lock
+    if not FileLock:
+        FileLock = GlobalData.file_lock
+    if FileLock:
+        FileLock.acquire()
+
     # os.replace and os.rename are the atomic operations in python 3 and 2.
     # we use these two atomic operations to ensure the file copy is atomic:
     # copy the src to a temp file in the dst same folder firstly, then
     # replace or rename the temp file to the destination file.
-    with tempfile.NamedTemporaryFile(dir=DirName, delete=False) as tf:
-        shutil.copy(SrcFile, tf.name)
-        tempname = tf.name
     try:
-        if hasattr(os, 'replace'):
-            os.replace(tempname, DstFile)
-        else:
-            # os.rename reqire to remove the dst on Windows, otherwise OSError will be raised.
-            if GlobalData.gIsWindows and os.path.exists(DstFile):
-                os.remove(DstFile)
-            os.rename(tempname, DstFile)
-
+        with tempfile.NamedTemporaryFile(dir=DirName, delete=False) as tf:
+            shutil.copy(SrcFile, tf.name)
+            tempname = tf.name
+            if hasattr(os, 'replace'):
+                os.replace(tempname, DstFile)
+            else:
+                # os.rename reqire to remove the dst on Windows, otherwise OSError will be raised.
+                if GlobalData.gIsWindows and os.path.exists(DstFile):
+                    os.remove(DstFile)
+                os.rename(tempname, DstFile)
     except IOError as X:
-        EdkLogger.error(None, FILE_COPY_FAILURE, ExtraData='IOError %s' % X)
+        if GlobalData.gBinCacheSource:
+            EdkLogger.quiet("[cache error]:fails to copy file with error: %s" % (X))
+        else:
+            EdkLogger.error(None, FILE_COPY_FAILURE, ExtraData='IOError %s' % X)
+    finally:
+        if FileLock:
+            FileLock.release()
 
     return True
 

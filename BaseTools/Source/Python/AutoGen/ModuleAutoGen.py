@@ -2220,6 +2220,9 @@ class ModuleAutoGen(AutoGen):
         if GlobalData.gBinCacheSource or GlobalData.gBinCacheDest:
             return False
 
+        if not (self.MetaFile.Path, self.Arch) in gDict:
+            return False
+
         if gDict[(self.MetaFile.Path, self.Arch)].IncrmtlCacheHit:
             return True
 

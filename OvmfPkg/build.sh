@@ -35,8 +35,8 @@ fi
 # Configure defaults for various options
 #
 
-ARCH_IA32=no
-ARCH_X64=no
+ARCH_IA32=yes
+ARCH_X64=yes
 BUILDTARGET=DEBUG
 BUILD_OPTIONS=
 PLATFORMFILE=

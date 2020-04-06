@@ -550,6 +550,10 @@
 #
 ################################################################################
 
+[PcdsDynamicDefault.X64]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPciDisableBusEnumeration|FALSE
+
+
 [PcdsDynamicDefault]
   # only set when
   #   ($(SMM_REQUIRE) == FALSE)
@@ -560,7 +564,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwWorkingBase|0
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageFtwSpareBase|0
 !endif
-  gEfiMdeModulePkgTokenSpaceGuid.PcdPciDisableBusEnumeration|FALSE
+
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|800
   gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|600
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiS3Enable|FALSE

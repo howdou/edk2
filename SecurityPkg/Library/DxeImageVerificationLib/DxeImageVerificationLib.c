@@ -1507,7 +1507,7 @@ IsAllowedByDb (
     if (CompareGuid (&CertList->SignatureType, &gEfiCertX509Guid)) {
       CertData  = (EFI_SIGNATURE_DATA *) ((UINT8 *) CertList + sizeof (EFI_SIGNATURE_LIST) + CertList->SignatureHeaderSize);
       CertCount = (CertList->SignatureListSize - sizeof (EFI_SIGNATURE_LIST) - CertList->SignatureHeaderSize) / CertList->SignatureSize;
-
+// this loop traverse certs on the db
       for (Index = 0; Index < CertCount; Index++) {
         //
         // Iterate each Signature Data Node within this CertList for verify.
@@ -1773,6 +1773,7 @@ DxeImageVerificationHandler (
   } else {
     mPeCoffHeaderOffset = 0;
   }
+  DEBUG ((DEBUG_ERROR, "%a 0\n", __FUNCTION__));
   //
   // Check PE/COFF image.
   //
@@ -1851,66 +1852,83 @@ DxeImageVerificationHandler (
     DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is not signed and %s hash of image is not found in DB/DBX.\n", mHashTypeStr));
     goto Failed;
   }
-
   //
   // Verify the signature of the image, multiple signatures are allowed as per PE/COFF Section 4.7
   // "Attribute Certificate Table".
   // The first certificate starts at offset (SecDataDir->VirtualAddress) from the start of the file.
   //
   SecDataDirEnd = SecDataDir->VirtualAddress + SecDataDir->Size;
+DEBUG ((DEBUG_ERROR, "%a 1, %x %x\n", __FUNCTION__, SecDataDir->VirtualAddress, SecDataDir->Size));
   for (OffSet = SecDataDir->VirtualAddress;
        OffSet < SecDataDirEnd;
        OffSet += (WinCertificate->dwLength + ALIGN_SIZE (WinCertificate->dwLength))) {
     SecDataDirLeft = SecDataDirEnd - OffSet;
+    //this loop traverse the signature in the PE/COFF image.
+    // the signature in the PE/COFF image is usually in the end of the image
+    // they said linux multi signatures can be traverse here
+    // but windows multi-signaature put the multi-sig in a PKCS_SIGNED_DATA
+    DEBUG ((DEBUG_ERROR, "%a 2 %x\n", __FUNCTION__, OffSet));
     if (SecDataDirLeft <= sizeof (WIN_CERTIFICATE)) {
+      DEBUG ((DEBUG_ERROR, "%a 3\n", __FUNCTION__));
       break;
     }
     WinCertificate = (WIN_CERTIFICATE *) (mImageBase + OffSet);
     if (SecDataDirLeft < WinCertificate->dwLength ||
         (SecDataDirLeft - WinCertificate->dwLength <
          ALIGN_SIZE (WinCertificate->dwLength))) {
+          DEBUG ((DEBUG_ERROR, "%a 4\n", __FUNCTION__));
       break;
     }
-
+DEBUG ((DEBUG_ERROR, "%a 5\n", __FUNCTION__));
     //
     // Verify the image's Authenticode signature, only DER-encoded PKCS#7 signed data is supported.
     //
     if (WinCertificate->wCertificateType == WIN_CERT_TYPE_PKCS_SIGNED_DATA) {
+DEBUG ((DEBUG_ERROR, "%a 6\n", __FUNCTION__));    
       //
       // The certificate is formatted as WIN_CERTIFICATE_EFI_PKCS which is described in the
       // Authenticode specification.
       //
       PkcsCertData = (WIN_CERTIFICATE_EFI_PKCS *) WinCertificate;
       if (PkcsCertData->Hdr.dwLength <= sizeof (PkcsCertData->Hdr)) {
+        DEBUG ((DEBUG_ERROR, "%a 7\n", __FUNCTION__));
         break;
       }
       AuthData   = PkcsCertData->CertData;
       AuthDataSize = PkcsCertData->Hdr.dwLength - sizeof(PkcsCertData->Hdr);
+      DEBUG ((DEBUG_ERROR, "%a AuthDataSize %x\n", __FUNCTION__, AuthDataSize));//3B40
     } else if (WinCertificate->wCertificateType == WIN_CERT_TYPE_EFI_GUID) {
       //
       // The certificate is formatted as WIN_CERTIFICATE_UEFI_GUID which is described in UEFI Spec.
       //
+      DEBUG ((DEBUG_ERROR, "%a 8\n", __FUNCTION__));
       WinCertUefiGuid = (WIN_CERTIFICATE_UEFI_GUID *) WinCertificate;
       if (WinCertUefiGuid->Hdr.dwLength <= OFFSET_OF(WIN_CERTIFICATE_UEFI_GUID, CertData)) {
+        DEBUG ((DEBUG_ERROR, "%a 9\n", __FUNCTION__));
         break;
       }
       if (!CompareGuid (&WinCertUefiGuid->CertType, &gEfiCertPkcs7Guid)) {
+        DEBUG ((DEBUG_ERROR, "%a 10\n", __FUNCTION__));
         continue;
       }
       AuthData = WinCertUefiGuid->CertData;
       AuthDataSize = WinCertUefiGuid->Hdr.dwLength - OFFSET_OF(WIN_CERTIFICATE_UEFI_GUID, CertData);
     } else {
+      DEBUG ((DEBUG_ERROR, "%a 11\n", __FUNCTION__));
       if (WinCertificate->dwLength < sizeof (WIN_CERTIFICATE)) {
+        DEBUG ((DEBUG_ERROR, "%a 12\n", __FUNCTION__));
         break;
       }
+      DEBUG ((DEBUG_ERROR, "%a 13\n", __FUNCTION__));
       continue;
     }
-
+DEBUG ((DEBUG_ERROR, "%a 14\n", __FUNCTION__));
     HashStatus = HashPeImageByType (AuthData, AuthDataSize);
     if (EFI_ERROR (HashStatus)) {
+      DEBUG ((DEBUG_ERROR, "%a 15\n", __FUNCTION__));
       continue;
     }
-
+DEBUG ((DEBUG_ERROR, "%a 16\n", __FUNCTION__));
     //
     // Check the digital signature against the revoked certificate in forbidden database (dbx).
     //
@@ -1919,11 +1937,12 @@ DxeImageVerificationHandler (
       IsVerified = FALSE;
       break;
     }
-
+DEBUG ((DEBUG_ERROR, "%a 17\n", __FUNCTION__));
     //
     // Check the digital signature against the valid certificate in allowed database (db).
     //
     if (!IsVerified) {
+      DEBUG ((DEBUG_ERROR, "%a 18\n", __FUNCTION__));
       if (IsAllowedByDb (AuthData, AuthDataSize)) {
         IsVerified = TRUE;
       }
@@ -1961,8 +1980,9 @@ DxeImageVerificationHandler (
       }
     }
   }
-
+DEBUG ((DEBUG_ERROR, "%a end of loop\n", __FUNCTION__));
   if (OffSet != SecDataDirEnd) {
+    DEBUG ((DEBUG_ERROR, "%a 19\n", __FUNCTION__));
     //
     // The Size in Certificate Table or the attribute certificate table is corrupted.
     //

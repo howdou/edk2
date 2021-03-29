@@ -1,0 +1,70 @@
+diff --git a/crypto/pkcs7/pk7_smime.c b/crypto/pkcs7/pk7_smime.c
+index 44187230ef..c32e6c8fdf 100644
+--- a/crypto/pkcs7/pk7_smime.c
++++ b/crypto/pkcs7/pk7_smime.c
+@@ -213,7 +213,9 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
+     int i, j = 0, k, ret = 0;
+     BIO *p7bio = NULL;
+     BIO *tmpin = NULL, *tmpout = NULL;
+-
++// the test image is signed by hp 2013 first, and then 2016
++// when I only have 2016 in db, verify fail
++// when I only have 2013 in db, pass
+     if (!p7) {
+         PKCS7err(PKCS7_F_PKCS7_VERIFY, PKCS7_R_INVALID_NULL_POINTER);
+         return 0;
+@@ -260,18 +262,22 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
+     cert_ctx = X509_STORE_CTX_new();
+     if (cert_ctx == NULL)
+         goto err;
++DEBUG ((DEBUG_ERROR, "%a sk_X509_num(signers) %x\n", __FUNCTION__, sk_X509_num(signers)));
+     if (!(flags & PKCS7_NOVERIFY))
+         for (k = 0; k < sk_X509_num(signers); k++) {
+             signer = sk_X509_value(signers, k);
++            DEBUG ((DEBUG_ERROR, "%a signer %x\n", __FUNCTION__, k));
+             if (!(flags & PKCS7_NOCHAIN)) {
+                 if (!X509_STORE_CTX_init(cert_ctx, store, signer,
+                                          p7->d.sign->cert)) {
+                     PKCS7err(PKCS7_F_PKCS7_VERIFY, ERR_R_X509_LIB);
++                    DEBUG ((DEBUG_ERROR, "%a err 1\n", __FUNCTION__));
+                     goto err;
+                 }
+                 X509_STORE_CTX_set_default(cert_ctx, "smime_sign");
+             } else if (!X509_STORE_CTX_init(cert_ctx, store, signer, NULL)) {
+                 PKCS7err(PKCS7_F_PKCS7_VERIFY, ERR_R_X509_LIB);
++                DEBUG ((DEBUG_ERROR, "%a err 2\n", __FUNCTION__));
+                 goto err;
+             }
+             if (!(flags & PKCS7_NOCRL))
+@@ -285,6 +291,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
+                          PKCS7_R_CERTIFICATE_VERIFY_ERROR);
+                 ERR_add_error_data(2, "Verify error:",
+                                    X509_verify_cert_error_string(j));
++DEBUG ((DEBUG_ERROR, "%a err 3\n", __FUNCTION__));
+                 goto err;
+             }
+             /* Check for revocation status here */
+@@ -296,7 +303,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
+      * potentially large numbers of slow copies of data which will occur when
+      * reading from a read write memory BIO when signatures are calculated.
+      */
+-
++DEBUG ((DEBUG_ERROR, "%a 4\n", __FUNCTION__));
+     if (indata && (BIO_method_type(indata) == BIO_TYPE_MEM)) {
+         char *ptr;
+         long len;
+@@ -342,12 +349,13 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
+         }
+         BIO_free(tmpout);
+     }
+-
++DEBUG ((DEBUG_ERROR, "%a 5\n", __FUNCTION__));
+     /* Now Verify All Signatures */
+     if (!(flags & PKCS7_NOSIGS))
+         for (i = 0; i < sk_PKCS7_SIGNER_INFO_num(sinfos); i++) {
+             si = sk_PKCS7_SIGNER_INFO_value(sinfos, i);
+             signer = sk_X509_value(signers, i);
++            DEBUG ((DEBUG_ERROR, "%a now verify all signatures %x\n", __FUNCTION__, i));
+             j = PKCS7_signatureVerify(p7bio, p7, si, signer);
+             if (j <= 0) {
+                 PKCS7err(PKCS7_F_PKCS7_VERIFY, PKCS7_R_SIGNATURE_FAILURE);

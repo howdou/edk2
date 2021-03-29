@@ -74,6 +74,8 @@ WrapPkcs7Data (
   if (Wrapped) {
     *WrapData     = (UINT8 *) P7Data;
     *WrapDataSize = P7Length;
+    DEBUG ((DEBUG_ERROR, "%a wrapped length %x\n", __FUNCTION__, P7Length));
+
   } else {
     //
     // Wrap PKCS#7 signeddata to a ContentInfo structure - add a header in 19 bytes.
@@ -817,7 +819,7 @@ Pkcs7Verify (
   if (!Status) {
     return Status;
   }
-
+DEBUG ((DEBUG_ERROR, "%a signeddatasize size %x, %x %x\n", __FUNCTION__, SignedDataSize, P7Data, SignedData));
   Status = FALSE;
 
   //
@@ -890,6 +892,7 @@ Pkcs7Verify (
   //
   // Verifies the PKCS#7 signedData structure
   //
+  DEBUG ((DEBUG_ERROR, "%a pkcs7_verify\n", __FUNCTION__));
   Status = (BOOLEAN) PKCS7_verify (Pkcs7, NULL, CertStore, DataBio, NULL, PKCS7_BINARY);
 
 _Exit:

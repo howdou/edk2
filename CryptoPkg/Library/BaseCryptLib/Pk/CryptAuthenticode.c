@@ -96,11 +96,12 @@ AuthenticodeVerify (
   if (Pkcs7 == NULL) {
     goto _Exit;
   }
-
+DEBUG ((DEBUG_ERROR, "%a %x\n", __FUNCTION__, Pkcs7->length));
   //
   // Check if it's PKCS#7 Signed Data (for Authenticode Scenario)
   //
   if (!PKCS7_type_is_signed (Pkcs7) || PKCS7_get_detached (Pkcs7)) {
+    DEBUG ((DEBUG_ERROR, "%a exit, not signed\n", __FUNCTION__));
     goto _Exit;
   }
 
@@ -108,7 +109,7 @@ AuthenticodeVerify (
   // NOTE: OpenSSL PKCS7 Decoder didn't work for Authenticode-format signed data due to
   //       some authenticode-specific structure. Use opaque ASN.1 string to retrieve
   //       PKCS#7 ContentInfo here.
-  //
+  // holy...should we really need to do that
   SpcIndirectDataOid = OBJ_get0_data(Pkcs7->d.sign->contents->type);
   if (OBJ_length(Pkcs7->d.sign->contents->type) != sizeof(mSpcIndirectOidValue) ||
       CompareMem (
@@ -119,6 +120,7 @@ AuthenticodeVerify (
     //
     // Un-matched SPC_INDIRECT_DATA_OBJID.
     //
+    DEBUG ((DEBUG_ERROR, "%a exit, unmatched\n", __FUNCTION__));
     goto _Exit;
   }
 
@@ -180,6 +182,7 @@ AuthenticodeVerify (
   //
   // Verifies the PKCS#7 Signed Data in PE/COFF Authenticode Signature
   //
+  DEBUG ((DEBUG_ERROR, "%a run pkcs7 verify\n", __FUNCTION__));
   Status = (BOOLEAN) Pkcs7Verify (OrigAuthData, DataSize, TrustedCert, CertSize, SpcIndirectDataContent, ContentSize);
 
 _Exit:
